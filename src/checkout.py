@@ -32,7 +32,6 @@ def create_model():
     tf.keras.layers.Dense(10, activation='softmax', name='layers_dense_2')
   ])
 
-
 model = create_model()
 model.compile(optimizer='adam',
               loss='sparse_categorical_crossentropy',
