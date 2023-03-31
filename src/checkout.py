@@ -16,6 +16,8 @@ print(numpy.__version__)
 
 print(keras.__version__)
 
+print(datetime.datetime.now())
+
 
 mnist = tf.keras.datasets.mnist
 
