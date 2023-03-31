@@ -1,2 +1,4 @@
 logs/*
 !logs/readme.md
+
+__pycache__/
