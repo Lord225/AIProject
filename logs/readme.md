@@ -1,0 +1,1 @@
+Folder przeznaczony na logi tensorboard'a
