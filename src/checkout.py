@@ -18,7 +18,6 @@ print(keras.__version__)
 
 print(datetime.datetime.now())
 
-
 mnist = tf.keras.datasets.mnist
 
 (x_train, y_train),(x_test, y_test) = mnist.load_data()
@@ -44,3 +43,7 @@ model.fit(x=x_train,
           epochs=5, 
           validation_data=(x_test, y_test), 
           callbacks=[tensorboard_callback])
+
+
+# save model
+model.save(config.MODELS_DIR + 'checkout_model.h5')
