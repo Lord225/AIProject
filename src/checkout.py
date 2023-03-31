@@ -4,6 +4,7 @@ import numpy
 import keras
 import datetime
 import config
+import os
 
 # Check avalible deivces
 print(tf.config.list_physical_devices('GPU'))
@@ -36,7 +37,9 @@ model.compile(optimizer='adam',
               loss='sparse_categorical_crossentropy',
               metrics=['accuracy'])
 
-tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=config.LOG_DIR, histogram_freq=1)
+
+logdir = os.path.join(config.LOG_DIR, datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir, histogram_freq=1)
 
 model.fit(x=x_train, 
           y=y_train, 
