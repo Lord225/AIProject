@@ -1,10 +1,10 @@
 from typing import Tuple
+import unittest
 import numpy as np
 import numba as nb
 import chess
 import chess.svg
 
-import unittest
 
 
 @nb.njit('int8(types.unicode_type)',cache=True)
@@ -164,7 +164,9 @@ class DiagonalChess:
     
     def __repr__(self):
         return to_fen(self.board)
-        
+
+
+
 
 class TestDiagonalChess(unittest.TestCase):
     def test_pice_to_unit(self):
@@ -184,7 +186,3 @@ class TestDiagonalChess(unittest.TestCase):
     def test_board_to_fen(self):
         board = generate_start_board()
         self.assertEqual(to_fen(board), '3prbnk/4ppqn/5ppb/P5pr/RP5p/BPP5/NQPP4/KNBRP3')
-
-# run tests if this file is run directly
-if __name__ == '__main__':
-    unittest.main(exit=False)
