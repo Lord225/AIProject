@@ -5,8 +5,6 @@ import numba as nb
 import chess
 import chess.svg
 
-
-
 @nb.njit('int8(types.unicode_type)',cache=True)
 def pice(name: str) -> int:
     PICES = {
@@ -81,8 +79,12 @@ def generate_start_board() -> np.ndarray:
     board[5, :] = np.array([pice('bishop'), pice('pawn')  , pice('pawn')  , 0           , 0           , 0             , 0             , 0             ], dtype=np.int8)
     board[6, :] = np.array([pice('knight'), pice('queen') , pice('pawn')  , pice('pawn'), 0           , 0             , 0             , 0             ], dtype=np.int8)
     board[7, :] = np.array([pice('king')  , pice('knight'), pice('bishop'), pice('rook'), pice('pawn'), 0             , 0             , 0             ], dtype=np.int8)
+    
     return board
 
+
+def fen_to_svg(fen: str) -> str:
+    return chess.svg.board(chess.Board(fen), size=500)
 
 class DiagonalChess:
     def __init__(self):
@@ -154,7 +156,7 @@ class DiagonalChess:
         Should render the board using the python-chess library
         """
 
-        return chess.svg.board(chess.Board(to_fen(self.board)), size=500)
+        return fen_to_svg(to_fen(self.board))
     
     def __str__(self):
         output = ''
@@ -164,8 +166,6 @@ class DiagonalChess:
     
     def __repr__(self):
         return to_fen(self.board)
-
-
 
 
 class TestDiagonalChess(unittest.TestCase):
