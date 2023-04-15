@@ -1,8 +1,8 @@
 {
     "python.testing.unittestArgs": [
-        "discover",
         "-v",
-        "./src",
+        "-s",
+        "./src"
     ],
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true
