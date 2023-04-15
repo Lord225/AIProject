@@ -3,7 +3,7 @@ import tensorboard
 import numpy
 import keras
 import datetime
-import config
+from . import config
 import os
 
 # Check avalible deivces

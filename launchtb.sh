@@ -1,1 +1,1 @@
-tensorboard --logdir=logs/ --host localhost --port 8888
+python -m tensorboard.main --logdir=logs/ --host localhost --port 8888
