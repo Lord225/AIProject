@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 import tqdm
 import config_file
-
+import tensorboard
 # works fine, add critic loss
 
 env = gym.make("CartPole-v1")
@@ -39,7 +39,7 @@ def sample_experiences(batch_size):
 
 def play_one_step(env, state, epsilon):
     action = epsilon_greedy_policy(state, epsilon)
-    next_state, reward, done, info = env.step(action)
+    next_state, reward, done, *info = env.step(action)
     replay_memory.append((state, action, reward, next_state, done))
     return next_state, reward, done, info
 
@@ -52,7 +52,7 @@ loss_fn = tf.keras.losses.mean_squared_error
 def training_step(batch_size):
     experiences = sample_experiences(batch_size)
     states, actions, rewards, next_states, dones = experiences
-    next_Q_values = model.predict(next_states)
+    next_Q_values = model.predict(next_states, verbose=0)
     max_next_Q_values = np.max(next_Q_values, axis=1)
     target_Q_values = (rewards +
                        (1 - dones) * discount_rate * max_next_Q_values)
@@ -73,7 +73,7 @@ train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR) #type:
 
 
 for episode in range(600):
-    obs = env.reset()    
+    obs, *_ = env.reset()    
     episode_reward = 0
     for step in range(200):
         epsilon = max(1 - episode / 500, 0.01)
