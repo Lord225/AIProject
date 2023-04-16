@@ -27,7 +27,7 @@ def epsilon_greedy_policy(state, epsilon=0):
 
 from collections import deque
 
-replay_memory = deque(maxlen=2000)
+replay_memory = deque(maxlen=10000)
 
 def sample_experiences(batch_size):
     indices = np.random.randint(len(replay_memory), size=batch_size)
@@ -44,7 +44,7 @@ def play_one_step(env, state, epsilon):
     return next_state, reward, done, info
 
 
-batch_size = 32
+batch_size = 128
 discount_rate = 0.95
 optimizer = tf.keras.optimizers.Adam(learning_rate=1e-2)
 loss_fn = tf.keras.losses.mean_squared_error
@@ -52,10 +52,9 @@ loss_fn = tf.keras.losses.mean_squared_error
 def training_step(batch_size):
     experiences = sample_experiences(batch_size)
     states, actions, rewards, next_states, dones = experiences
-    next_Q_values = model.predict(next_states, verbose=0)
+    next_Q_values = model.predict(next_states, verbose=0) #type: ignore
     max_next_Q_values = np.max(next_Q_values, axis=1)
-    target_Q_values = (rewards +
-                       (1 - dones) * discount_rate * max_next_Q_values)
+    target_Q_values = (rewards + (1 - dones) * discount_rate * max_next_Q_values)
     target_Q_values = target_Q_values.reshape(-1, 1)
     mask = tf.one_hot(actions, n_outputs)
     with tf.GradientTape() as tape:
@@ -72,18 +71,19 @@ train_loss = tf.keras.metrics.Mean(name='train_loss')
 train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR) #type: ignore
 
 
-for episode in range(600):
-    obs, *_ = env.reset()    
+for episode in tqdm.tqdm(range(1000)):
+    obs = env.reset()    
     episode_reward = 0
     for step in range(200):
-        epsilon = max(1 - episode / 500, 0.01)
+        epsilon = max(1 - episode / 50, 0.01)
         obs, reward, done, info = play_one_step(env, obs, epsilon)
         episode_reward += reward
         if done:
             break
 
-    if episode > 50:
-        training_step(batch_size)
+    if episode > 10:
+        for i in range(10):
+            training_step(batch_size)
 
     with train_summary_writer.as_default():
         tf.summary.scalar('reward', episode_reward, step=episode)
