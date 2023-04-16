@@ -3,7 +3,7 @@ import tensorboard
 import numpy
 import keras
 import datetime
-from . import config
+import config_file
 import os
 
 # Check avalible deivces
@@ -38,7 +38,7 @@ model.compile(optimizer='adam',
               metrics=['accuracy'])
 
 
-tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=config.LOG_DIR, histogram_freq=1)
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=config_file.LOG_DIR, histogram_freq=1)
 
 model.fit(x=x_train, 
           y=y_train, 
@@ -48,4 +48,4 @@ model.fit(x=x_train,
 
 
 # save model
-model.save(config.MODELS_DIR + 'checkout_model.h5')
+model.save(config_file.MODELS_DIR + 'checkout_model.h5')
