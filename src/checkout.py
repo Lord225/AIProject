@@ -46,6 +46,5 @@ model.fit(x=x_train,
           validation_data=(x_test, y_test), 
           callbacks=[tensorboard_callback])
 
-
 # save model
 model.save(config_file.MODELS_DIR + 'checkout_model.h5')
