@@ -116,36 +116,23 @@ def run_episode_and_get_history(
 
 # todo change this to a quicker version
 def sample_experiences(batch_size, replay_memory) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
-    indices = np.random.randint(len(replay_memory), size=batch_size)
-    batch = [replay_memory[index] for index in indices]
+    # unpack 
+    states, actions, rewards, next_states, dones = replay_memory
+
+    indices = np.random.randint(len(states), size=batch_size)
+
+    return (
+        tf.constant(np.array(states)[indices], dtype=tf.float32),
+        tf.constant(np.array(actions)[indices], dtype=tf.int32),
+        tf.constant(np.array(rewards)[indices], dtype=tf.float32),
+        tf.constant(np.array(next_states)[indices], dtype=tf.float32),
+        tf.constant(np.array(dones)[indices], dtype=tf.float32)
+    )
     
-    states, actions, rewards, next_states, dones = [
-        np.array([experience[field_index] for experience in batch])
-        for field_index in range(5)
-    ]
-
-
-    return states, actions, rewards, next_states, dones
-
-batch_size = 32
 discount_rate = 0.95
 optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 loss_fn = tf.keras.losses.mean_squared_error
 
-# def training_step(batch_size):
-#     experiences = sample_experiences(batch_size)
-#     states, actions, rewards, next_states, dones = experiences
-#     next_Q_values = model.predict(next_states, verbose=0)
-#     max_next_Q_values = np.max(next_Q_values, axis=1)
-#     target_Q_values = (rewards +(1 - dones) * discount_rate * max_next_Q_values)
-#     target_Q_values = target_Q_values.reshape(-1, 1)
-#     mask = tf.one_hot(actions, n_outputs)
-#     with tf.GradientTape() as tape:
-#         all_Q_values = model(states)
-#         Q_values = tf.reduce_sum(all_Q_values * mask, axis=1, keepdims=True)
-#         loss = tf.reduce_mean(loss_fn(target_Q_values, Q_values))
-#     grads = tape.gradient(loss, model.trainable_variables)
-#     optimizer.apply_gradients(zip(grads, model.trainable_variables))
 @tf.function
 def training_step(
         batch: Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
@@ -183,22 +170,32 @@ def training_step(
 from collections import deque
     
 def run():
-    buffer = deque(maxlen=10000)
+    states_buffer = deque(maxlen=10000)
+    action_probs_buffer = deque(maxlen=10000)
+    returns_buffer = deque(maxlen=10000)
+    next_states_buffer = deque(maxlen=10000)
+    dones_buffer = deque(maxlen=10000)
+
+
     t = tqdm.tqdm(range(1000))
     for episode in t:
         state, _ = env.reset()
         state = tf.constant(state, dtype=tf.float32)
-        states, action_probs, returns, next_states, dones, total_rewards = run_episode_and_get_history(state, model, 200, 0.99) #type: ignore
+        states, action_probs, returns, next_states, dones, total_rewards = run_episode_and_get_history(state, model, 200, discount_rate) #type: ignore
 
-        for _state, _action_probs, _returns, _next_state, _done in zip(states, action_probs, returns, next_states, dones):
-            buffer.append((_state, _action_probs, _returns, _next_state, _done))
+        states_buffer.extend(states)
+        action_probs_buffer.extend(action_probs)
+        returns_buffer.extend(returns)
+        next_states_buffer.extend(next_states)
+        dones_buffer.extend(dones)
+
 
         with train_summary_writer.as_default():
             tf.summary.scalar('reward', total_rewards, step=episode)
         
-        if len(buffer) > 100:
+        if len(states_buffer) > 100:
             for i in range(10):
-                batch = sample_experiences(32, buffer)
+                batch = sample_experiences(32, (states_buffer, action_probs_buffer, returns_buffer, next_states_buffer, dones_buffer))
         
                 training_step(batch, model, optimizer)
 
