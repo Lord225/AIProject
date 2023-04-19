@@ -7,7 +7,7 @@ import config_file
 import tensorboard
 # works fine, add critic loss
 
-env = gym.make("CartPole-v1")
+env = gym.make("CartPole-v1", render_mode="human")
 input_shape = [4] # == env.observation_space.shape
 n_outputs = 2 # == env.action_space.n
 
@@ -44,18 +44,21 @@ def play_one_step(env, state, epsilon):
     return next_state, reward, done, info
 
 
-batch_size = 32
+batch_size = 128
 discount_rate = 0.95
 optimizer = tf.keras.optimizers.Adam(learning_rate=1e-2)
 loss_fn = tf.keras.losses.mean_squared_error
-
+# 2279
+# * jira & temp
+# * Test sprawidź jak działa
+# * Bd sprawidź
+# 
 def training_step(batch_size):
     experiences = sample_experiences(batch_size)
     states, actions, rewards, next_states, dones = experiences
     next_Q_values = model.predict(next_states, verbose=0)
     max_next_Q_values = np.max(next_Q_values, axis=1)
-    target_Q_values = (rewards +
-                       (1 - dones) * discount_rate * max_next_Q_values)
+    target_Q_values = (rewards +(1 - dones) * discount_rate * max_next_Q_values)
     target_Q_values = target_Q_values.reshape(-1, 1)
     mask = tf.one_hot(actions, n_outputs)
     with tf.GradientTape() as tape:
@@ -71,9 +74,13 @@ best_score = 0
 train_loss = tf.keras.metrics.Mean(name='train_loss')
 train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR) #type: ignore
 
+t = tqdm.tqdm(range(600), desc="Episode", unit="episode")
 
-for episode in range(600):
+for episode in t:
     obs, *_ = env.reset()    
+
+    env.render()
+
     episode_reward = 0
     for step in range(200):
         epsilon = max(1 - episode / 500, 0.01)
