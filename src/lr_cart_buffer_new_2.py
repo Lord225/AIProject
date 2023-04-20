@@ -3,7 +3,7 @@ import gym
 import numpy as np
 import tensorflow as tf
 import tqdm
-import config_file
+from .. import config_file
 import tensorboard
 
 # shit

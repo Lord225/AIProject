@@ -5,6 +5,7 @@ import keras
 import datetime
 import config_file
 import os
+import gym
 
 # Check avalible deivces
 print(tf.config.list_physical_devices('GPU'))
@@ -16,6 +17,8 @@ print(tensorboard.__version__)
 print(numpy.__version__)
 
 print(keras.__version__)
+
+print(gym.__version__) #type: ignore
 
 print(datetime.datetime.now())
 
@@ -30,7 +33,6 @@ def create_model():
     tf.keras.layers.Dense(512, activation='relu', name='layers_dense1'),
     tf.keras.layers.Dense(512, activation='relu', name='layers_dense2'),
     tf.keras.layers.Dense(512, activation='relu', name='layers_dense3'),
-    tf.keras.layers.Dense(512, activation='relu', name='layers_dense4'),
     tf.keras.layers.Dropout(0.2, name='layers_dropout'),
     tf.keras.layers.Dense(10, activation='softmax', name='layers_dense_2')
   ])
@@ -45,7 +47,7 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=config_file.LOG_DI
 
 model.fit(x=x_train, 
           y=y_train, 
-          epochs=5, 
+          epochs=100, 
           validation_data=(x_test, y_test), 
           callbacks=[tensorboard_callback])
 

@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 import tqdm
 import config_file
+
 import tensorboard
 # works fine, add critic loss
 
