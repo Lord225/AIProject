@@ -27,7 +27,10 @@ x_train, x_test = x_train / 255.0, x_test / 255.0
 def create_model():
   return tf.keras.models.Sequential([
     tf.keras.layers.Flatten(input_shape=(28, 28), name='layers_flatten'),
-    tf.keras.layers.Dense(512, activation='relu', name='layers_dense'),
+    tf.keras.layers.Dense(512, activation='relu', name='layers_dense1'),
+    tf.keras.layers.Dense(512, activation='relu', name='layers_dense2'),
+    tf.keras.layers.Dense(512, activation='relu', name='layers_dense3'),
+    tf.keras.layers.Dense(512, activation='relu', name='layers_dense4'),
     tf.keras.layers.Dropout(0.2, name='layers_dropout'),
     tf.keras.layers.Dense(10, activation='softmax', name='layers_dense_2')
   ])
