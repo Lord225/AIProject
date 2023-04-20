@@ -7,6 +7,7 @@ import config_file
 
 # works fine but do not have buffer
 
+# nie da się dodać bufora praktycznie
 
 env = gym.make("CartPole-v1")
 
