@@ -17,7 +17,7 @@ model = tf.keras.models.Sequential([
     tf.keras.layers.Dense(n_outputs)
 ])
 
-train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR) #type: ignore
+train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR+"v2") #type: ignore
 
 def env_step(action):
     state, reward, done, _, _ = env.step(action)

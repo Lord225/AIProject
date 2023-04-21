@@ -6,8 +6,15 @@ import tqdm
 import config_file
 import tensorboard
 import random
+from collections import deque
 
-# almost perfect
+# RL implementation 4
+# This implements the algorithm with the following changes:
+# * uses advantege in calculating Q values
+# * uses actor - critic loss
+# * uses target network
+
+# env spec
 env = gym.make("CartPole-v1")
 input_shape = [4] # == env.observation_space.shape
 n_outputs = 2 # == env.action_space.n
@@ -16,21 +23,18 @@ def get_network():
     inputs = tf.keras.layers.Input(shape=(4,))
     common = tf.keras.layers.Dense(32, 'elu')(inputs)
     common = tf.keras.layers.Dense(32, 'elu')(common)
-    state_values = tf.keras.layers.Dense(1)(common)
-    raw_advantages = tf.keras.layers.Dense(n_outputs)(common)
-    advantages = raw_advantages - tf.keras.backend.max(raw_advantages, axis=1, keepdims=True)
-    Q_values = state_values + advantages
+    Q_values = tf.keras.layers.Dense(n_outputs)(common)
     critic = tf.keras.layers.Dense(1)(common)
     model = tf.keras.models.Model(inputs=[inputs], outputs=[Q_values, critic])
 
     return model
 
+# networks
 actor_model = get_network()
 target_model = get_network()
-
 target_model.set_weights(actor_model.get_weights())
 
-train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR) #type: ignore
+train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR+"v4.1") #type: ignore
 
 def env_step(action):
     state, reward, done, _, _ = env.step(action)
@@ -46,6 +50,15 @@ def run_episode(
         initial_state: tf.Tensor,
         actor_model: tf.keras.Model, 
         max_steps: int) -> ReplayHistory:
+    """
+    Run a single episode to collect training data
+    collects: 
+    * states - state at each step
+    * actions - action taken at each step
+    * rewards - reward received at each step
+    * next_states - next state at each step
+    * dones - done flag at each step
+    """
     states = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
     actions = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True)
     rewards = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
@@ -126,21 +139,37 @@ def run_episode_and_get_history(
     return (states, action_probs, returns, next_states, dones), tf.reduce_sum(rewards)
 import random
 
+
+# optimized yey
 # todo change this to a quicker version
 def sample_experiences(batch_size, replay_memory):
-    # get random batch from replay memory
-    sample = random.sample(replay_memory, batch_size)
+    states, actions, rewards, next_states, dones = replay_memory
+    # sample random experiences
+    indices = random.sample(range(len(rewards)), batch_size)
 
-    return map(np.array, zip(*sample))
+    return (
+        tf.gather(states, indices),
+        tf.gather(actions, indices),
+        tf.gather(rewards, indices),
+        tf.gather(next_states, indices),
+        tf.gather(dones, indices)
+    )
+    
 
-batch_size = 64
+batch_size = 128
 discount_rate = 0.99
-optimizer = tf.keras.optimizers.Adam(learning_rate=1e-2)
+episodes = 1000
+train_iters_per_episode = 20
+max_steps_per_episode = 200
+target_update_freq = 20
+replay_memory_size = 10000
+
+optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
 loss_fn = tf.keras.losses.mean_squared_error
 
 @tf.function
 def training_step(
-        batch: Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
+        batch: ReplayHistory,
         target_model: tf.keras.Model,
         actor_model: tf.keras.Model,
         optimizer: tf.keras.optimizers.Optimizer
@@ -155,37 +184,45 @@ def training_step(
         all_Q_values, values = actor_model(states, training=True) # type: ignore
         Q_values = tf.reduce_sum(all_Q_values * mask, axis=1, keepdims=True)
         actor_loss = tf.reduce_mean(loss_fn(target_Q_values, Q_values))
-        critic_loss = tf.reduce_mean(loss_fn(target_Q_values, values))
+        critic_loss = 0.5*tf.reduce_mean(loss_fn(target_Q_values, values))
 
         loss = actor_loss + critic_loss
     grads = tape.gradient(loss, actor_model.trainable_variables)
     optimizer.apply_gradients(zip(grads, actor_model.trainable_variables))
 
 
-from collections import deque
     
 def run():
-    buffer = deque(maxlen=10000)
-    t = tqdm.tqdm(range(1000))
+    states_buffer = deque(maxlen=replay_memory_size)
+    actions_buffer = deque(maxlen=replay_memory_size)
+    returns_buffer = deque(maxlen=replay_memory_size)
+    next_states_buffer = deque(maxlen=replay_memory_size)
+    dones_buffer = deque(maxlen=replay_memory_size)
+
+    t = tqdm.tqdm(range(episodes))
     for episode in t:
         state, _ = env.reset()
         state = tf.constant(state, dtype=tf.float32)
-        states, action_probs, returns, next_states, dones, total_rewards = run_episode_and_get_history(state, actor_model, 200, discount_rate) #type: ignore
+        (states, action_probs, returns, next_states, dones), total_rewards = run_episode_and_get_history(state, actor_model, max_steps_per_episode, discount_rate) #type: ignore
 
-        for _state, _action_probs, _returns, _next_state, _done in zip(states, action_probs, returns, next_states, dones):
-            buffer.append((_state, _action_probs, _returns, _next_state, _done))
+        states_buffer.extend(states.numpy())
+        actions_buffer.extend(action_probs.numpy())
+        returns_buffer.extend(returns.numpy())
+        next_states_buffer.extend(next_states.numpy())
+        dones_buffer.extend(dones.numpy())
 
         with train_summary_writer.as_default():
             tf.summary.scalar('reward', total_rewards, step=episode)
 
         t.set_description(f"Episode {episode} - Reward: {total_rewards:.2f}")
         
-        if len(buffer) > 100:
-            for i in range(10):
-                batch = sample_experiences(32, buffer)
+        if len(states_buffer) > 2*batch_size:
+            # todo: test if sampling bigger batch and randomly sampling from it inside tf.function is faster
+            for i in range(train_iters_per_episode):
+                batch = sample_experiences(batch_size, (states_buffer, actions_buffer, returns_buffer, next_states_buffer, dones_buffer))
         
                 training_step(batch, target_model, actor_model, optimizer)
-        if episode % 5 == 0:
+        if episode % target_update_freq == 0:
             target_model.set_weights(actor_model.get_weights())
 
 

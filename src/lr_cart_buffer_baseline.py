@@ -68,7 +68,7 @@ rewards = []
 best_score = 0
 
 train_loss = tf.keras.metrics.Mean(name='train_loss')
-train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR) #type: ignore
+train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR+"v1") #type: ignore
 
 t = tqdm.tqdm(range(600), desc="Episode", unit="episode")
 

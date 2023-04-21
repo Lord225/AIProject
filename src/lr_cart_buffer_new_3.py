@@ -7,7 +7,12 @@ import config_file
 import tensorboard
 import random
 
-# almost perfect
+# RL implementation 3
+# This implements the algorithm with the following changes:
+# * uses advantege in calculating Q values
+# * uses actor - critic loss
+# 
+
 env = gym.make("CartPole-v1")
 input_shape = [4] # == env.observation_space.shape
 n_outputs = 2 # == env.action_space.n
@@ -22,7 +27,7 @@ Q_values = state_values + advantages
 critic = tf.keras.layers.Dense(1)(common)
 model = tf.keras.models.Model(inputs=[inputs], outputs=[Q_values, critic])
 
-train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR) #type: ignore
+train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR+"v3") #type: ignore
 
 def env_step(action):
     state, reward, done, _, _ = env.step(action)
