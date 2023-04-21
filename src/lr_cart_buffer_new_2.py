@@ -3,7 +3,7 @@ import gym
 import numpy as np
 import tensorflow as tf
 import tqdm
-from .. import config_file
+import config_file
 import tensorboard
 
 # shit
@@ -84,7 +84,7 @@ def get_expected_return(
 
     # Start from the end of `rewards` and accumulate reward sums
     # into the `returns` array
-    rewards = tf.cast(rewards[::-1], dtype=tf.float32)
+    rewards = tf.cast(rewards[::-1], dtype=tf.float32) # type: ignore
     discounted_sum = tf.constant(0.0)
     discounted_sum_shape = discounted_sum.shape
     for i in tf.range(n):
@@ -93,7 +93,7 @@ def get_expected_return(
         discounted_sum.set_shape(discounted_sum_shape)
         returns = returns.write(i, discounted_sum)
 
-    returns = returns.stack()[::-1]
+    returns = returns.stack()[::-1] # type: ignore
 
     return returns
 
@@ -106,7 +106,7 @@ def run_episode_and_get_history(
         max_steps: int,
         gamma: float
 ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
-    states, action_probs, rewards, next_states, dones = run_episode(initial_state, model, max_steps)
+    states, action_probs, rewards, next_states, dones = run_episode(initial_state, model, max_steps) # type: ignore
 
     # Calculate expected returns
     returns = get_expected_return(rewards, gamma=gamma) #type: ignore
@@ -123,25 +123,11 @@ def sample_experiences(batch_size, replay_memory):
 
     return states, actions, rewards, next_states, dones
 
-batch_size = 32
-discount_rate = 0.95
-optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
+batch_size = 128
+discount_rate = 0.99
+optimizer = tf.keras.optimizers.Adam(learning_rate=1e-2)
 loss_fn = tf.keras.losses.mean_squared_error
 
-# def training_step(batch_size):
-#     experiences = sample_experiences(batch_size)
-#     states, actions, rewards, next_states, dones = experiences
-#     next_Q_values = model.predict(next_states, verbose=0)
-#     max_next_Q_values = np.max(next_Q_values, axis=1)
-#     target_Q_values = (rewards +(1 - dones) * discount_rate * max_next_Q_values)
-#     target_Q_values = target_Q_values.reshape(-1, 1)
-#     mask = tf.one_hot(actions, n_outputs)
-#     with tf.GradientTape() as tape:
-#         all_Q_values = model(states)
-#         Q_values = tf.reduce_sum(all_Q_values * mask, axis=1, keepdims=True)
-#         loss = tf.reduce_mean(loss_fn(target_Q_values, Q_values))
-#     grads = tape.gradient(loss, model.trainable_variables)
-#     optimizer.apply_gradients(zip(grads, model.trainable_variables))
 @tf.function
 def training_step(
         batch: Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
@@ -184,7 +170,7 @@ def run():
     for episode in t:
         state, _ = env.reset()
         state = tf.constant(state, dtype=tf.float32)
-        states, action_probs, returns, next_states, dones, total_rewards = run_episode_and_get_history(state, model, 200, 0.99) #type: ignore
+        states, action_probs, returns, next_states, dones, total_rewards = run_episode_and_get_history(state, model, 200, discount_rate) #type: ignore
 
         for _state, _action_probs, _returns, _next_state, _done in zip(states, action_probs, returns, next_states, dones):
             buffer.append((_state, _action_probs, _returns, _next_state, _done))

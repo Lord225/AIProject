@@ -46,15 +46,9 @@ def play_one_step(env, state, epsilon):
 
 
 batch_size = 128
-batch_size = 128
 discount_rate = 0.95
 optimizer = tf.keras.optimizers.Adam(learning_rate=1e-2)
 loss_fn = tf.keras.losses.mean_squared_error
-# 2279
-# * jira & temp
-# * Test sprawidź jak działa
-# * Bd sprawidź
-# 
 def training_step(batch_size):
     experiences = sample_experiences(batch_size)
     states, actions, rewards, next_states, dones = experiences

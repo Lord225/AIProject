@@ -181,7 +181,7 @@ def run():
                     tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True))    # dones
     
     for episode in tf.range(episodes):
-        initial_state = tf.numpy_function(reset_env, [], tf.float32)
+        initial_state: tf.Tensor = tf.numpy_function(reset_env, [], tf.float32)  # type: ignore
 
         with tf.GradientTape() as tape:
             replay_buffer, reward_sum = run_episode(

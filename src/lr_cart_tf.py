@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 import gym
 import numpy as np
 import tensorflow as tf
@@ -23,13 +23,13 @@ def env_step(action):
     return (state.astype(np.float32), np.array(reward, np.float32), np.array(done, np.int32))
 
 def tf_env_step(action: tf.Tensor) -> List[tf.Tensor]:
-  return tf.numpy_function(env_step, [action], [tf.float32, tf.float32, tf.int32])
+  return tf.numpy_function(env_step, [action], [tf.float32, tf.float32, tf.int32]) # type: ignore
 
 
 def run_episode(
         initial_state: tf.Tensor,
         model: tf.keras.Model, 
-        max_steps: int):
+        max_steps: int) -> Tuple[tf.Tensor, tf.Tensor]:
     action_probs = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
     rewards = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
 
@@ -48,7 +48,7 @@ def run_episode(
         action_probs_t = tf.nn.softmax(action_logits_t)
 
         # Store log probability of the action chosen
-        action_probs = action_probs.write(t, action_probs_t[0, action])
+        action_probs = action_probs.write(t, action_probs_t[0, action]) # type: ignore
 
         # Apply action to the environment to get next state and reward
         state, reward, done = tf_env_step(action)
@@ -73,7 +73,7 @@ def get_expected_return(
 
     # Start from the end of `rewards` and accumulate reward sums
     # into the `returns` array
-    rewards = tf.cast(rewards[::-1], dtype=tf.float32)
+    rewards = tf.cast(rewards[::-1], dtype=tf.float32) # type: ignore
     discounted_sum = tf.constant(0.0)
     discounted_sum_shape = discounted_sum.shape
     for i in tf.range(n):
@@ -82,7 +82,7 @@ def get_expected_return(
         discounted_sum.set_shape(discounted_sum_shape)
         returns = returns.write(i, discounted_sum)
 
-    returns = returns.stack()[::-1]
+    returns = returns.stack()[::-1] # type: ignore
 
     return returns
 
@@ -103,7 +103,7 @@ def train_step(
             initial_state, model, max_steps_per_episode) 
 
         # Calculate the expected returns
-        returns = get_expected_return(rewards, gamma)
+        returns = get_expected_return(rewards, gamma) # type: ignore
 
         # Convert training data to appropriate TF tensor shapes
         action_probs, returns = [
@@ -127,7 +127,7 @@ def train_step(
 
 
 train_loss = tf.keras.metrics.Mean(name='train_loss')
-train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR)
+train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR) # type: ignore
 
 for i in tqdm.tqdm(range(1000)):
     initial_state, info = env.reset()

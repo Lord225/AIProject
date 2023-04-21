@@ -12,15 +12,23 @@ env = gym.make("CartPole-v1")
 input_shape = [4] # == env.observation_space.shape
 n_outputs = 2 # == env.action_space.n
 
-inputs = tf.keras.layers.Input(shape=(4,))
-common = tf.keras.layers.Dense(32, 'elu')(inputs)
-common = tf.keras.layers.Dense(32, 'elu')(common)
-state_values = tf.keras.layers.Dense(1)(common)
-raw_advantages = tf.keras.layers.Dense(n_outputs)(common)
-advantages = raw_advantages - tf.keras.backend.max(raw_advantages, axis=1, keepdims=True)
-Q_values = state_values + advantages
-critic = tf.keras.layers.Dense(1)(common)
-model = tf.keras.models.Model(inputs=[inputs], outputs=[Q_values, critic])
+def get_network():
+    inputs = tf.keras.layers.Input(shape=(4,))
+    common = tf.keras.layers.Dense(32, 'elu')(inputs)
+    common = tf.keras.layers.Dense(32, 'elu')(common)
+    state_values = tf.keras.layers.Dense(1)(common)
+    raw_advantages = tf.keras.layers.Dense(n_outputs)(common)
+    advantages = raw_advantages - tf.keras.backend.max(raw_advantages, axis=1, keepdims=True)
+    Q_values = state_values + advantages
+    critic = tf.keras.layers.Dense(1)(common)
+    model = tf.keras.models.Model(inputs=[inputs], outputs=[Q_values, critic])
+
+    return model
+
+actor_model = get_network()
+target_model = get_network()
+
+target_model.set_weights(actor_model.get_weights())
 
 train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR) #type: ignore
 
@@ -36,7 +44,7 @@ ReplayHistory = Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]
 @tf.function
 def run_episode(
         initial_state: tf.Tensor,
-        model: tf.keras.Model, 
+        actor_model: tf.keras.Model, 
         max_steps: int) -> ReplayHistory:
     states = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
     actions = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True)
@@ -54,7 +62,7 @@ def run_episode(
         state = tf.expand_dims(state, 0)
 
         # Run the model and to get action probabilities and critic value
-        action_logits_t, _ = model(state) # type: ignore
+        action_logits_t, _ = actor_model(state) # type: ignore
 
         # Sample next action from the action probability distribution
         action = tf.random.categorical(action_logits_t, 1, dtype=tf.int32)[0, 0]
@@ -87,8 +95,6 @@ def get_expected_return(
     n = tf.shape(rewards)[0]
     returns = tf.TensorArray(dtype=tf.float32, size=n)
 
-    # Start from the end of `rewards` and accumulate reward sums
-    # into the `returns` array
     rewards = tf.cast(rewards[::-1], dtype=tf.float32) # type: ignore
     discounted_sum = tf.constant(0.0)
     discounted_sum_shape = discounted_sum.shape
@@ -107,28 +113,27 @@ BufferType = Tuple[tf.Tensor, tf.Tensor]
 @tf.function
 def run_episode_and_get_history(
         initial_state: tf.Tensor,
-        model: tf.keras.Model,
+        actor_model: tf.keras.Model,
         max_steps: int,
         gamma: float
-) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
-    states, action_probs, rewards, next_states, dones = run_episode(initial_state, model, max_steps) # type: ignore
+) -> Tuple[ReplayHistory, tf.Tensor]:
+    # run whole episode
+    states, action_probs, rewards, next_states, dones = run_episode(initial_state, actor_model, max_steps) # type: ignore
 
     # Calculate expected returns
     returns = get_expected_return(rewards, gamma=gamma) #type: ignore
 
-    return states, action_probs, returns, next_states, dones, tf.reduce_sum(rewards)
+    return (states, action_probs, returns, next_states, dones), tf.reduce_sum(rewards)
 import random
 
 # todo change this to a quicker version
 def sample_experiences(batch_size, replay_memory):
+    # get random batch from replay memory
     sample = random.sample(replay_memory, batch_size)
 
-    # transpose the batch
-    states, actions, rewards, next_states, dones = map(np.array, zip(*sample))
+    return map(np.array, zip(*sample))
 
-    return states, actions, rewards, next_states, dones
-
-batch_size = 128
+batch_size = 64
 discount_rate = 0.99
 optimizer = tf.keras.optimizers.Adam(learning_rate=1e-2)
 loss_fn = tf.keras.losses.mean_squared_error
@@ -136,24 +141,25 @@ loss_fn = tf.keras.losses.mean_squared_error
 @tf.function
 def training_step(
         batch: Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
-        model: tf.keras.Model,
+        target_model: tf.keras.Model,
+        actor_model: tf.keras.Model,
         optimizer: tf.keras.optimizers.Optimizer
 ):
     states, actions, rewards, next_states, dones = batch
-    next_Q_values, _ = model(next_states, training=True) # type: ignore
+    next_Q_values, _ = target_model(next_states, training=True) # type: ignore
     max_next_Q_values = tf.reduce_max(next_Q_values, axis=1)
     target_Q_values = (rewards + (tf.constant(1.0, dtype=tf.float32) - dones) * discount_rate * max_next_Q_values)
     target_Q_values = tf.reshape(target_Q_values, [-1, 1])
     mask = tf.one_hot(actions, n_outputs)
     with tf.GradientTape() as tape:
-        all_Q_values, values = model(states, training=True) # type: ignore
+        all_Q_values, values = actor_model(states, training=True) # type: ignore
         Q_values = tf.reduce_sum(all_Q_values * mask, axis=1, keepdims=True)
         actor_loss = tf.reduce_mean(loss_fn(target_Q_values, Q_values))
         critic_loss = tf.reduce_mean(loss_fn(target_Q_values, values))
 
         loss = actor_loss + critic_loss
-    grads = tape.gradient(loss, model.trainable_variables)
-    optimizer.apply_gradients(zip(grads, model.trainable_variables))
+    grads = tape.gradient(loss, actor_model.trainable_variables)
+    optimizer.apply_gradients(zip(grads, actor_model.trainable_variables))
 
 
 from collections import deque
@@ -164,7 +170,7 @@ def run():
     for episode in t:
         state, _ = env.reset()
         state = tf.constant(state, dtype=tf.float32)
-        states, action_probs, returns, next_states, dones, total_rewards = run_episode_and_get_history(state, model, 200, discount_rate) #type: ignore
+        states, action_probs, returns, next_states, dones, total_rewards = run_episode_and_get_history(state, actor_model, 200, discount_rate) #type: ignore
 
         for _state, _action_probs, _returns, _next_state, _done in zip(states, action_probs, returns, next_states, dones):
             buffer.append((_state, _action_probs, _returns, _next_state, _done))
@@ -178,7 +184,9 @@ def run():
             for i in range(10):
                 batch = sample_experiences(32, buffer)
         
-                training_step(batch, model, optimizer)
+                training_step(batch, target_model, actor_model, optimizer)
+        if episode % 5 == 0:
+            target_model.set_weights(actor_model.get_weights())
 
 
 run()
