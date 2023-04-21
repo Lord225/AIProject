@@ -6,8 +6,8 @@ import chess
 import chess.svg
 
 @nb.njit('int8(types.unicode_type)',cache=True)
-def pice(name: str) -> int:
-    PICES = {
+def piece(name: str) -> int:
+    pieceS = {
         'PAWN': 1,
         'pawn': -1,
         'ROOK': 2,
@@ -22,11 +22,11 @@ def pice(name: str) -> int:
         'king': -6,
     }
 
-    return PICES[name]
+    return pieceS[name]
 
 @nb.njit(cache=True)
-def pice_to_fen(piece: int) -> str:
-    pice_map = {
+def piece_to_fen(piece: int) -> str:
+    piece_map = {
         1: 'p',
         -1: 'P',
         2: 'r',
@@ -42,7 +42,7 @@ def pice_to_fen(piece: int) -> str:
         0: ' ',
     }
 
-    return pice_map[piece]
+    return piece_map[piece]
 
 @nb.njit('types.unicode_type(int8[:,:])', cache=True)
 def to_fen(board: np.ndarray) -> str:
@@ -60,25 +60,89 @@ def to_fen(board: np.ndarray) -> str:
                 if empty > 0:
                     fen += str(empty)
                     empty = 0
-                fen += pice_to_fen(piece)
+                fen += piece_to_fen(piece)
         if empty > 0:
             fen += str(empty)
         fen += '/'
     fen = fen[:-1]
     return fen
 
+def inbounds(x, y):
+    return 0 <= x < 8 and 0 <= y < 8
+
+def is_starting_position(x, y, piece):
+    initial_board = generate_start_board()
+    return initial_board[y, x] == piece
+
+
+def pawn_legal_moves(board: np.ndarray, x: int, y: int):
+    moves = np.zeros((8, 8), dtype=np.int8)
+    piece = board[y, x]
+    is_init_pos = is_starting_position(x, y, piece)
+    
+    # Determine the direction the pawn is moving based on its color
+    if piece > 0:  # white pawn
+        direction = 1
+    else:  # black pawn
+        direction = -1
+    
+    # Check if the pawn can move one square forward
+    if inbounds(y+direction, x) and board[y+direction, x] == 0:
+        moves[y+direction, x] = piece
+        
+        # Check if the pawn can move two squares forward from its starting position
+        if inbounds(y+2*direction, x) and is_init_pos and board[y+2*direction, x] == 0:
+            moves[y+2*direction, x] = piece
+    # Check if the pawn can move one square on the side
+    if inbounds(y, x - direction) and board[y, x - direction] == 0:
+        moves[y, x - direction] = piece
+        
+        # Check if the pawn can move two squares forward from its starting position
+        if inbounds(y, x - 2*direction)  and is_init_pos and board[y, x - 2*direction] == 0:
+            moves[y, x - 2*direction] = piece
+    
+    # Check if the pawn can capture diagonally forward
+    if inbounds(y+direction, x-direction) and board[y+direction, x-direction] * piece < 0:
+        moves[y+direction, x-direction] = piece
+        
+    # Check if the pawn can capture diagonally to its left
+    if inbounds(y-direction, x-direction) and board[y-direction, x-direction] * piece < 0:
+        moves[y-direction, x-direction] = piece
+    # Check if the pawn can capture diagonally to its right
+    if inbounds(y+direction, x+direction) and board[y+direction, x+direction] * piece < 0:
+        moves[y-direction, x-direction] = piece
+    
+    return moves
+
+
+def legal_moves(board: np.ndarray, x,y):
+    piece_value = board[y, x]
+    
+    if abs(piece_value) == piece('pawn'):
+        return pawn_legal_moves(board, x, y)
+    elif abs(piece_value) == piece('rook'):
+        return rook_legal_moves(board, x, y)
+    elif abs(piece_value) == piece('knight'):
+        return knight_legal_moves(board, x, y)
+    elif abs(piece_value) == piece('bishop'):
+        return bishop_legal_moves(board, x, y)
+    elif abs(piece_value) == piece('queen'):
+        return queen_legal_moves(board, x, y)
+    elif abs(piece_value) == piece('king'):
+        return king_legal_moves(board, x, y)
+
 @nb.njit('int8[:,:]()',cache=True)
 def generate_start_board() -> np.ndarray:
     board = np.zeros((8, 8), dtype=np.int8)
 
-    board[0, :] = np.array([0             , 0             , 0             , pice('PAWN'), pice('ROOK'), pice('BISHOP'), pice('KNIGHT'), pice('KING')  ], dtype=np.int8)
-    board[1, :] = np.array([0             , 0             , 0             , 0           , pice('PAWN'), pice('PAWN')  , pice('QUEEN') , pice('KNIGHT')], dtype=np.int8)
-    board[2, :] = np.array([0             , 0             , 0             , 0           , 0           , pice('PAWN')  , pice('PAWN')  , pice('BISHOP')], dtype=np.int8)
-    board[3, :] = np.array([pice('pawn')  , 0             , 0             , 0           , 0           , 0             , pice('PAWN')  , pice('ROOK')  ], dtype=np.int8)
-    board[4, :] = np.array([pice('rook')  , pice('pawn')  , 0             , 0           , 0           , 0             , 0             , pice('PAWN')  ], dtype=np.int8)
-    board[5, :] = np.array([pice('bishop'), pice('pawn')  , pice('pawn')  , 0           , 0           , 0             , 0             , 0             ], dtype=np.int8)
-    board[6, :] = np.array([pice('knight'), pice('queen') , pice('pawn')  , pice('pawn'), 0           , 0             , 0             , 0             ], dtype=np.int8)
-    board[7, :] = np.array([pice('king')  , pice('knight'), pice('bishop'), pice('rook'), pice('pawn'), 0             , 0             , 0             ], dtype=np.int8)
+    board[0, :] = np.array([0             , 0             , 0             , piece('PAWN'), piece('ROOK'), piece('BISHOP'), piece('KNIGHT'), piece('KING')  ], dtype=np.int8)
+    board[1, :] = np.array([0             , 0             , 0             , 0           , piece('PAWN'), piece('PAWN')  , piece('QUEEN') , piece('KNIGHT')], dtype=np.int8)
+    board[2, :] = np.array([0             , 0             , 0             , 0           , 0           , piece('PAWN')  , piece('PAWN')  , piece('BISHOP')], dtype=np.int8)
+    board[3, :] = np.array([piece('pawn')  , 0             , 0             , 0           , 0           , 0             , piece('PAWN')  , piece('ROOK')  ], dtype=np.int8)
+    board[4, :] = np.array([piece('rook')  , piece('pawn')  , 0             , 0           , 0           , 0             , 0             , piece('PAWN')  ], dtype=np.int8)
+    board[5, :] = np.array([piece('bishop'), piece('pawn')  , piece('pawn')  , 0           , 0           , 0             , 0             , 0             ], dtype=np.int8)
+    board[6, :] = np.array([piece('knight'), piece('queen') , piece('pawn')  , piece('pawn'), 0           , 0             , 0             , 0             ], dtype=np.int8)
+    board[7, :] = np.array([piece('king')  , piece('knight'), piece('bishop'), piece('rook'), piece('pawn'), 0             , 0             , 0             ], dtype=np.int8)
     
     return board
 
@@ -161,7 +225,7 @@ class DiagonalChess:
     def __str__(self):
         output = ''
         for row in self.board:
-            output += f"{' '.join([pice_to_fen(pice) for pice in row])} \n"
+            output += f"{' '.join([piece_to_fen(piece) for piece in row])} \n"
         return output
     
     def __repr__(self):
@@ -169,20 +233,46 @@ class DiagonalChess:
 
 
 class TestDiagonalChess(unittest.TestCase):
-    def test_pice_to_unit(self):
-        self.assertEqual(pice_to_fen(1), 'p')
-        self.assertEqual(pice_to_fen(-1), 'P')
-        self.assertEqual(pice_to_fen(2), 'r')
-        self.assertEqual(pice_to_fen(-2), 'R')
-        self.assertEqual(pice_to_fen(3), 'n')
-        self.assertEqual(pice_to_fen(-3), 'N')
-        self.assertEqual(pice_to_fen(4), 'b')
-        self.assertEqual(pice_to_fen(-4), 'B')
-        self.assertEqual(pice_to_fen(5), 'q')
-        self.assertEqual(pice_to_fen(-5), 'Q')
-        self.assertEqual(pice_to_fen(6), 'k')
-        self.assertEqual(pice_to_fen(-6), 'K')
+    def test_piece_to_unit(self):
+        self.assertEqual(piece_to_fen(1), 'p')
+        self.assertEqual(piece_to_fen(-1), 'P')
+        self.assertEqual(piece_to_fen(2), 'r')
+        self.assertEqual(piece_to_fen(-2), 'R')
+        self.assertEqual(piece_to_fen(3), 'n')
+        self.assertEqual(piece_to_fen(-3), 'N')
+        self.assertEqual(piece_to_fen(4), 'b')
+        self.assertEqual(piece_to_fen(-4), 'B')
+        self.assertEqual(piece_to_fen(5), 'q')
+        self.assertEqual(piece_to_fen(-5), 'Q')
+        self.assertEqual(piece_to_fen(6), 'k')
+        self.assertEqual(piece_to_fen(-6), 'K')
     
     def test_board_to_fen(self):
         board = generate_start_board()
         self.assertEqual(to_fen(board), '3prbnk/4ppqn/5ppb/P5pr/RP5p/BPP5/NQPP4/KNBRP3')
+    def test_pawn_legal_moves(self):
+        board = np.zeros((8, 8), dtype=np.int8)
+        board[5,5] = piece("pawn")
+        board[2,2] = piece("PAWN")
+
+        movesp = pawn_legal_moves(board,5,5)
+        legal_movesp = np.zeros((8, 8), dtype=np.int8)
+        legal_movesp[4,5] = piece("pawn")
+        legal_movesp[5,6] = piece("pawn")
+
+        movesP = pawn_legal_moves(board,2,2)
+        legal_movesP = np.zeros((8, 8), dtype=np.int8)
+        legal_movesP[2,1] = piece("PAWN")
+        legal_movesP[3,2] = piece("PAWN")
+        self.assertTrue(np.array_equal(movesp, legal_movesp))
+        self.assertTrue(np.array_equal(movesP, legal_movesP))
+
+if __name__ == '__main__':
+    board = generate_start_board()
+    board = np.zeros((8, 8), dtype=np.int8)
+    # board[5,5] = piece("pawn")
+    board[2,2] = piece("PAWN")
+    # moves = pawn_legal_moves(board,5,5)
+    moves = pawn_legal_moves(board,2,2)
+
+    print(moves)
