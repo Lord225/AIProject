@@ -232,6 +232,14 @@ def bishop_legal_moves(board: np.ndarray, x: int, y: int):
 
     return moves
 
+@nb.njit('int8[:,:](int8[:,:], int32, int32)', cache=True)
+def queen_legal_moves(board: np.ndarray, x: int, y: int):
+    # piece = board[y, x]
+    bishop_moves = bishop_legal_moves(board,x,y)
+    rook_moves = rook_legal_moves(board,x,y)
+    moves = np.add(bishop_moves, rook_moves)
+    # return np.where(moves != 0, piece, moves)
+    return moves
 
 def legal_moves(board: np.ndarray, x,y):
     piece_value = board[y, x]
