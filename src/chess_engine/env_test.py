@@ -1,6 +1,8 @@
 
 import random
 import unittest
+
+import numpy as np
 from . import DiagonalChess, action
 
 
@@ -12,8 +14,11 @@ class DiagonalChessTests(unittest.TestCase):
         env.reset()
         for _ in range(100):
             random_action = random.randrange(4096)
-            _, _, done = env.step(random_action)
+            action, _, done = env.step(random_action)
             
+            self.assertEqual(action.shape, (6, 8, 8))
+            self.assertEqual(action.dtype, np.int8)
+
             if done:
                 env.reset()
         
