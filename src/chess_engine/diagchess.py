@@ -293,6 +293,7 @@ def king_legal_moves(board: np.ndarray, x: int, y: int):
             
     return moves
 
+@nb.njit('int8[:,:](int8[:,:], int32, int32)', cache=True)
 def legal_moves(board: np.ndarray, x,y):
     piece_value = board[y, x]
     
