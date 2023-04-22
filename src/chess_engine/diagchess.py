@@ -268,7 +268,32 @@ def knight_legal_moves(board: np.ndarray, x: int, y: int):
     return moves
 
 @nb.njit('int8[:,:](int8[:,:], int32, int32)', cache=True)
-def legal_moves(board: np.ndarray, x: int, y: int):
+def king_legal_moves(board: np.ndarray, x: int, y: int):
+    moves = np.zeros((8, 8), dtype=np.int8)
+    piece = board[y, x]
+    
+    # Possible king moves
+    king_moves = [(1,1), (1,-1), (-1,1), (-1,-1), (1,0), (-1,0), (0,1), (0,-1)]
+    
+    for move in king_moves:
+        # Determine potential square to move to
+        new_x = x + move[0]
+        new_y = y + move[1]
+        
+        # Check if the move is within the bounds of the board and is either empty or contains an opponent piece
+        if inbounds(new_y, new_x) and (board[new_y, new_x] == 0 or board[new_y, new_x] * piece < 0):
+            
+            # Check if the king is not moving adjacent to an opponent king
+            king_positions = np.where(board == -piece)
+            for kx, ky in zip(king_positions[1], king_positions[0]):
+                if abs(new_x - kx) <= 1 and abs(new_y - ky) <= 1:
+                    break
+            else:
+                moves[new_y, new_x] = piece
+            
+    return moves
+
+def legal_moves(board: np.ndarray, x,y):
     piece_value = board[y, x]
     
     if abs(piece_value) == piece('PAWN'):
@@ -281,8 +306,7 @@ def legal_moves(board: np.ndarray, x: int, y: int):
         return bishop_legal_moves(board, x, y)
     elif abs(piece_value) == piece('QUEEN'):
         return queen_legal_moves(board, x, y)
-    elif abs(piece_value) == piece('KING'):
-        return np.zeros((8, 8), dtype=np.int8)
+    elif abs(piece_value) == piece('king'):
         return king_legal_moves(board, x, y)
 
     return np.zeros((8, 8), dtype=np.int8)
