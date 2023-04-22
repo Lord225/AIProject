@@ -126,8 +126,52 @@ def pawn_legal_moves(board: np.ndarray, x: int, y: int):
         moves[y-direction, x-direction] = piece
     # Check if the pawn can capture diagonally to its right
     if inbounds(y+direction, x+direction) and board[y+direction, x+direction] * piece < 0:
-        moves[y-direction, x-direction] = piece
+        moves[y+direction, x+direction] = piece
     
+    return moves
+@nb.njit('int8[:,:](int8[:,:], int32, int32)', cache=True)
+def rook_legal_moves(board: np.ndarray, x: int, y: int):
+    moves = np.zeros((8, 8), dtype=np.int8)
+    piece = board[y, x]
+    
+    # Check valid moves along the x-axis
+    for i in range(x + 1, 8):
+        if board[y, i] == 0:
+            moves[y, i] = piece
+        elif board[y, i] * piece < 0:
+            moves[y, i] = piece
+            break
+        else:
+            break
+
+    for i in range(x - 1, -1, -1):
+        if board[y, i] == 0:
+            moves[y, i] = piece
+        elif board[y, i] * piece < 0:
+            moves[y, i] = piece
+            break
+        else:
+            break
+
+    # Check valid moves along the y-axis
+    for i in range(y + 1, 8):
+        if board[i, x] == 0:
+            moves[i, x] = piece
+        elif board[i, x] * piece < 0:
+            moves[i, x] = piece
+            break
+        else:
+            break
+
+    for i in range(y - 1, -1, -1):
+        if board[i, x] == 0:
+            moves[i, x] = piece
+        elif board[i, x] * piece < 0:
+            moves[i, x] = piece
+            break
+        else:
+            break
+
     return moves
 
 
