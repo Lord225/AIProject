@@ -1,9 +1,7 @@
 from typing import Tuple
-import unittest
 import numpy as np
 
-from chess_engine.diagchess import fen_to_svg, generate_start_board, piece_to_fen, to_fen
-
+from .diagchess import fen_to_svg, generate_start_board, piece_to_fen, to_fen
 
 class DiagonalChess:
     def __init__(self):

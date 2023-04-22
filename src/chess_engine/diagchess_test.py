@@ -2,8 +2,7 @@ import unittest
 
 import numpy as np
 
-from chess_engine.diagchess import board_to_observation, generate_start_board, pawn_legal_moves, piece, piece_to_fen, to_fen
-
+from .diagchess import board_to_observation, generate_start_board, pawn_legal_moves, piece, piece_to_fen, to_fen
 
 class TestLegalMoves(unittest.TestCase):
     def test_pawn_legal_moves(self):
@@ -35,6 +34,70 @@ class TestObservation(unittest.TestCase):
         legal_observation[0, 2, 2] = -1
 
         self.assertTrue(np.array_equal(observation, legal_observation))
+    def test_start_board_as_observation(self):
+        board = generate_start_board()
+
+        observation = board_to_observation(board)
+
+        expected = np.array(
+            [[
+            [ 0 , 0,  0, -1,  0,  0,  0,  0],
+            [ 0  ,0 , 0 , 0 ,-1 ,-1 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 ,-1 ,-1 , 0],
+            [ 1  ,0 , 0 , 0 , 0 , 0 ,-1 , 0],
+            [ 0  ,1 , 0 , 0 , 0 , 0 , 0 ,-1],
+            [ 0  ,1 , 1 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 1 , 1 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 1 , 0 , 0 , 0]],
+            [
+            [ 0  ,0 ,  0,  0, -1,  0,  0,  0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 ,-1],
+            [ 1  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 1 , 0 , 0 , 0 , 0]],
+            [
+            [ 0  ,0,  0,  0,  0,  0, -1,  0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 ,-1],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 1  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,1 , 0 , 0 , 0 , 0 , 0 , 0]],
+            [
+            [ 0 , 0 ,  0,  0,  0, -1,  0,  0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 ,-1],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 1  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 1 , 0 , 0 , 0 , 0 , 0]],
+            [
+            [ 0  ,0 ,  0,  0,  0,  0,  0,  0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 ,-1 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,1 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0]],
+            [
+            [ 0  ,0 , 0,  0,  0,  0,  0, -1],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 0  ,0 , 0 , 0 , 0 , 0 , 0 , 0],
+            [ 1  ,0 , 0 , 0 , 0 , 0 , 0 , 0]]]
+        )
+
+        self.assertTrue(np.array_equal(expected, observation))
+
 
 
 class TestTransforms(unittest.TestCase):

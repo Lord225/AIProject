@@ -2,7 +2,6 @@ import numpy as np
 import numba as nb
 import chess
 import chess.svg
-import unittest
 
 @nb.njit('int8(types.unicode_type)',cache=True)
 def piece(name: str) -> int:
@@ -159,7 +158,7 @@ def legal_moves(board: np.ndarray, x,y):
 def board_to_observation(board: np.ndarray) -> np.ndarray:
     observation = np.zeros((6, 8, 8), dtype=np.int8)
 
-    observation[0, :, :] = (board == piece('pawn')).astype(np.int8)-(board == piece('PAWN')).astype(np.int8)
+    observation[0, :, :] = (board == piece('pawn')).astype(np.int8) - (board == piece('PAWN')).astype(np.int8)
     observation[1, :, :] = (board == piece('rook')).astype(np.int8) - (board == piece('ROOK')).astype(np.int8)
     observation[2, :, :] = (board == piece('knight')).astype(np.int8) - (board == piece('KNIGHT')).astype(np.int8)
     observation[3, :, :] = (board == piece('bishop')).astype(np.int8) - (board == piece('BISHOP')).astype(np.int8)
@@ -175,6 +174,7 @@ def fen_to_svg(fen: str) -> str:
 
 if __name__ == '__main__':
     board = generate_start_board()
+    print(board_to_observation(board))
     board = np.zeros((8, 8), dtype=np.int8)
     # board[5,5] = piece("pawn")
     board[2,2] = piece("PAWN")
