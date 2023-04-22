@@ -267,7 +267,8 @@ def knight_legal_moves(board: np.ndarray, x: int, y: int):
             
     return moves
 
-def legal_moves(board: np.ndarray, x, y):
+@nb.njit('int8[:,:](int8[:,:], int32, int32)', cache=True)
+def legal_moves(board: np.ndarray, x: int, y: int):
     piece_value = board[y, x]
     
     if abs(piece_value) == piece('PAWN'):
@@ -279,7 +280,6 @@ def legal_moves(board: np.ndarray, x, y):
     elif abs(piece_value) == piece('BISHOP'):
         return bishop_legal_moves(board, x, y)
     elif abs(piece_value) == piece('QUEEN'):
-        return np.zeros((8, 8), dtype=np.int8)
         return queen_legal_moves(board, x, y)
     elif abs(piece_value) == piece('KING'):
         return np.zeros((8, 8), dtype=np.int8)
@@ -300,7 +300,7 @@ def board_to_observation(board: np.ndarray) -> np.ndarray:
 
     return observation
 
-#@nb.njit(cache=True)
+@nb.njit(cache=True)
 def random_legal_move(board: np.ndarray, isBlack: bool) -> Optional[Tuple[int, int, int, int]]:
     # choose random piece
     pieces = np.argwhere((board > 0) == isBlack)
@@ -328,7 +328,7 @@ def random_legal_move(board: np.ndarray, isBlack: bool) -> Optional[Tuple[int, i
     
     return None
 
-#@nb.njit(cache=True)
+@nb.njit(cache=True)
 def generate_move(board: np.ndarray, x1: int, y1: int, x2: int, y2: int, isBlack: bool) -> Tuple[Optional[Tuple[int, int, int, int]], float]:
     """
     generates legal move and penalty from any illegal move, return None if no legal moves are possible
