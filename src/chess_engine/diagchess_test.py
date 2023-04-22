@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from .diagchess import board_to_observation, generate_start_board, pawn_legal_moves, rook_legal_moves, bishop_legal_moves, queen_legal_moves, knight_legal_moves, piece, piece_to_fen, to_fen
+from .diagchess import board_to_observation, generate_start_board, pawn_legal_moves, rook_legal_moves, bishop_legal_moves, queen_legal_moves, knight_legal_moves, king_legal_moves, piece, piece_to_fen, to_fen
 
 def array_equal_print(arr1: np.ndarray, arr2: np.ndarray) -> bool:
     if np.array_equal(arr1, arr2):
@@ -249,6 +249,43 @@ class TestLegalMoves(unittest.TestCase):
         moves = knight_legal_moves(board,5,5)
         # print(moves)
         # print(legal_moves)
+        self.assertTrue(array_equal_print(moves, legal_moves))
+
+    def test_king_legal_moves(self):
+        board = np.zeros((8, 8), dtype=np.int8)
+        board[5,5] = piece("KING")
+
+
+        legal_moves = np.array([[0 , 0 , 0 , 0 , 0 , 0 , 0 , 0],
+                                [0 , 0 , 0 , 0 , 0 , 0 , 0 , 0],
+                                [0 , 0 , 0 , 0 , 0 , 0 , 0 , 0],
+                                [0 , 0 , 0 , 0 , 0 , 0 , 0 , 0],
+                                [0 , 0 , 0 , 0 , 6 , 6 , 6 , 0],
+                                [0 , 0 , 0 , 0 , 6 , 0 , 6 , 0],
+                                [0 , 0 , 0 , 0 , 6 , 6 , 6 , 0],
+                                [0 , 0 , 0 , 0 , 0 , 0 , 0 , 0],]).astype(np.int8)
+        moves = king_legal_moves(board,5,5)
+
+        # print(moves)
+        # print(legal_moves)
+        self.assertTrue(array_equal_print(moves, legal_moves))
+        board[4,3] = piece("king")
+
+
+        legal_moves = np.array([[0 , 0 , 0 , 0 , 0 , 0 , 0 , 0],
+                                [0 , 0 , 0 , 0 , 0 , 0 , 0 , 0],
+                                [0 , 0 , 0 , 0 , 0 , 0 , 0 , 0],
+                                [0 , 0 , 0 , 0 , 0 , 0 , 0 , 0],
+                                [0 , 0 , 0 , 0 , 0 , 0 , 6 , 0],
+                                [0 , 0 , 0 , 0 , 0 , 0 , 6 , 0],
+                                [0 , 0 , 0 , 0 , 6 , 6 , 6 , 0],
+                                [0 , 0 , 0 , 0 , 0 , 0 , 0 , 0],]).astype(np.int8)
+        board[4,5] = piece("ROOK")
+        board[5,6] = piece("rook")
+
+        moves = king_legal_moves(board,5,5)
+        print(moves)
+        print(legal_moves)
         self.assertTrue(array_equal_print(moves, legal_moves))
 
 
