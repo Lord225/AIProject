@@ -1,7 +1,15 @@
 from typing import Tuple
 import numpy as np
 
-from .diagchess import fen_to_svg, generate_start_board, piece_to_fen, to_fen
+from .diagchess import board_to_observation, fen_to_svg, generate_start_board, piece_to_fen, to_fen
+
+def action(move_str: str) -> int:
+    x1ord = ord(move_str[0]) - ord('a')
+    y1ord = ord(move_str[1]) - ord('1')
+    x2ord = ord(move_str[2]) - ord('a')
+    y2ord = ord(move_str[3]) - ord('1')
+
+    return x1ord + y1ord * 8 + x2ord * 64 + y2ord * 512
 
 class DiagonalChess:
     def __init__(self):
@@ -17,7 +25,7 @@ class DiagonalChess:
         self.board = generate_start_board()
     
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, int, bool]:
+    def step(self, action: int) -> Tuple[np.ndarray, int, bool]:
         """
         ## returns
         - observation: np.ndarray
@@ -63,7 +71,8 @@ class DiagonalChess:
         * mask probabilities of illegal moves to 0 and use max to select the move
         """
 
-        raise 
+        
+        return board_to_observation(self.board), 0, False
         
 
     def render(self):

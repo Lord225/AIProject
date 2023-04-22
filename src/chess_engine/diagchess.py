@@ -385,9 +385,7 @@ def generate_move(board: np.ndarray, x1: int, y1: int, x2: int, y2: int, isBlack
         else:
             # no legal moves, try any move
             return random_legal_move(board, isBlack), ILLEGAL_MOVE_PENALTY_2 # no legal moves
-        
-
-
+    
 
 def fen_to_svg(fen: str) -> str:
     return chess.svg.board(chess.Board(fen), size=500)
