@@ -3,7 +3,6 @@ import tensorflow as tf
 
 from reinforce.common import ReplayHistoryType
 
-
 @tf.function
 def run_episode(
         initial_state: tf.Tensor,

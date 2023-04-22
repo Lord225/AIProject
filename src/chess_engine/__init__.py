@@ -70,7 +70,6 @@ class DiagonalChess:
         * use 4 numbers to indicate the move (from, to, promote to, promote from) instead of 8x8x8x8 array of probabilities
         * mask probabilities of illegal moves to 0 and use max to select the move
         """
-
         
         return board_to_observation(self.board), 0, False
         

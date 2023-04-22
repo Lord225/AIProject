@@ -2,6 +2,8 @@ from collections import deque
 import random
 import tensorflow as tf
 
+from reinforce.common import ReplayHistoryType
+
 
 class ReplayMemory:
     def __init__(self, max_size):
@@ -18,7 +20,7 @@ class ReplayMemory:
         self.next_states_buffer.extend(next_states.numpy())
         self.dones_buffer.extend(dones.numpy())
 
-    def sample(self, batch_size):
+    def sample(self, batch_size) -> ReplayHistoryType:
         indices = random.sample(range(len(self.returns_buffer)), batch_size)
 
         return (
