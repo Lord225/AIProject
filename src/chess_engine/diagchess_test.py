@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from .diagchess import board_to_observation, generate_start_board, pawn_legal_moves, rook_legal_moves, bishop_legal_moves, queen_legal_moves, piece, piece_to_fen, to_fen
+from .diagchess import ILLEGAL_MOVE_PENALTY_1, LEGAL_MOVE_REWARD, WRONG_PIECE_COLOR_PENALTY, board_to_observation, generate_move, generate_start_board, pawn_legal_moves, rook_legal_moves, bishop_legal_moves, queen_legal_moves, piece, piece_to_fen, to_fen
 
 class TestLegalMoves(unittest.TestCase):
     def test_pawn_legal_moves(self):
@@ -285,3 +285,35 @@ class TestTransforms(unittest.TestCase):
     def test_board_to_fen(self):
         board = generate_start_board()
         self.assertEqual(to_fen(board), '3prbnk/4ppqn/5ppb/P5pr/RP5p/BPP5/NQPP4/KNBRP3')
+
+
+class TestMoveChoosing(unittest.TestCase):
+    """
+    Board cheetsheet:
+        0 1 2 3 4 5 6 7
+    0       p r b n k 
+    1         p p q n 
+    2           p p b 
+    3 P           p r 
+    4 R P           p 
+    5 B P P           
+    6 N Q P P         
+    7 K N B R P       
+    """
+    def test_legal_moves(self):
+        board = generate_start_board()
+        
+        # move a pawn as white
+        move = generate_move(board, 0, 3, 1, 3, False)
+        # moves, reward for legal move
+        self.assertEqual(move, ((0, 3, 1, 3), LEGAL_MOVE_REWARD))
+    def test_legal_move_as_other_color(self):
+        board = generate_start_board()
+        # move wite pawn as black
+        _, reward = generate_move(board, 1, 4, 2, 4, True)
+        self.assertEqual(reward, WRONG_PIECE_COLOR_PENALTY)
+    def test_illegal_moves(self):
+        board = generate_start_board()
+        # move a pawn as white onto illegal square
+        _, reward = generate_move(board, 2, 5, 0, 0, False)
+        self.assertEqual(reward, ILLEGAL_MOVE_PENALTY_1)
