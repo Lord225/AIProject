@@ -67,14 +67,32 @@ def to_fen(board: np.ndarray) -> str:
     fen = fen[:-1]
     return fen
 
-def inbounds(x, y):
+
+@nb.njit('int8[:,:]()',cache=True)
+def generate_start_board() -> np.ndarray:
+    board = np.zeros((8, 8), dtype=np.int8)
+
+    board[0, :] = np.array([0             , 0             , 0             , piece('PAWN'), piece('ROOK'), piece('BISHOP'), piece('KNIGHT'), piece('KING')  ], dtype=np.int8)
+    board[1, :] = np.array([0             , 0             , 0             , 0           , piece('PAWN'), piece('PAWN')  , piece('QUEEN') , piece('KNIGHT')], dtype=np.int8)
+    board[2, :] = np.array([0             , 0             , 0             , 0           , 0           , piece('PAWN')  , piece('PAWN')  , piece('BISHOP')], dtype=np.int8)
+    board[3, :] = np.array([piece('pawn')  , 0             , 0             , 0           , 0           , 0             , piece('PAWN')  , piece('ROOK')  ], dtype=np.int8)
+    board[4, :] = np.array([piece('rook')  , piece('pawn')  , 0             , 0           , 0           , 0             , 0             , piece('PAWN')  ], dtype=np.int8)
+    board[5, :] = np.array([piece('bishop'), piece('pawn')  , piece('pawn')  , 0           , 0           , 0             , 0             , 0             ], dtype=np.int8)
+    board[6, :] = np.array([piece('knight'), piece('queen') , piece('pawn')  , piece('pawn'), 0           , 0             , 0             , 0             ], dtype=np.int8)
+    board[7, :] = np.array([piece('king')  , piece('knight'), piece('bishop'), piece('rook'), piece('pawn'), 0             , 0             , 0             ], dtype=np.int8)
+    
+    return board
+
+@nb.njit(cache=True)
+def inbounds(x: int, y: int):
     return 0 <= x < 8 and 0 <= y < 8
 
-def is_starting_position(x, y, piece):
+@nb.njit(cache=True)
+def is_starting_position(x: int, y: int, piece: int):
     initial_board = generate_start_board()
     return initial_board[y, x] == piece
 
-
+@nb.njit('int8[:,:](int8[:,:], int32, int32)', cache=True)
 def pawn_legal_moves(board: np.ndarray, x: int, y: int):
     moves = np.zeros((8, 8), dtype=np.int8)
     piece = board[y, x]
@@ -121,30 +139,35 @@ def legal_moves(board: np.ndarray, x,y):
     if abs(piece_value) == piece('pawn'):
         return pawn_legal_moves(board, x, y)
     elif abs(piece_value) == piece('rook'):
+        return np.zeros((8, 8), dtype=np.int8)
         return rook_legal_moves(board, x, y)
     elif abs(piece_value) == piece('knight'):
+        return np.zeros((8, 8), dtype=np.int8)
         return knight_legal_moves(board, x, y)
     elif abs(piece_value) == piece('bishop'):
+        return np.zeros((8, 8), dtype=np.int8)
         return bishop_legal_moves(board, x, y)
     elif abs(piece_value) == piece('queen'):
+        return np.zeros((8, 8), dtype=np.int8)
         return queen_legal_moves(board, x, y)
     elif abs(piece_value) == piece('king'):
+        return np.zeros((8, 8), dtype=np.int8)
         return king_legal_moves(board, x, y)
 
-@nb.njit('int8[:,:]()',cache=True)
-def generate_start_board() -> np.ndarray:
-    board = np.zeros((8, 8), dtype=np.int8)
+    return np.zeros((8, 8), dtype=np.int8)
 
-    board[0, :] = np.array([0             , 0             , 0             , piece('PAWN'), piece('ROOK'), piece('BISHOP'), piece('KNIGHT'), piece('KING')  ], dtype=np.int8)
-    board[1, :] = np.array([0             , 0             , 0             , 0           , piece('PAWN'), piece('PAWN')  , piece('QUEEN') , piece('KNIGHT')], dtype=np.int8)
-    board[2, :] = np.array([0             , 0             , 0             , 0           , 0           , piece('PAWN')  , piece('PAWN')  , piece('BISHOP')], dtype=np.int8)
-    board[3, :] = np.array([piece('pawn')  , 0             , 0             , 0           , 0           , 0             , piece('PAWN')  , piece('ROOK')  ], dtype=np.int8)
-    board[4, :] = np.array([piece('rook')  , piece('pawn')  , 0             , 0           , 0           , 0             , 0             , piece('PAWN')  ], dtype=np.int8)
-    board[5, :] = np.array([piece('bishop'), piece('pawn')  , piece('pawn')  , 0           , 0           , 0             , 0             , 0             ], dtype=np.int8)
-    board[6, :] = np.array([piece('knight'), piece('queen') , piece('pawn')  , piece('pawn'), 0           , 0             , 0             , 0             ], dtype=np.int8)
-    board[7, :] = np.array([piece('king')  , piece('knight'), piece('bishop'), piece('rook'), piece('pawn'), 0             , 0             , 0             ], dtype=np.int8)
-    
-    return board
+@nb.njit('float32[:,:,:](int8[:,:])', cache=True)
+def board_to_observation(board: np.ndarray) -> np.ndarray:
+    observation = np.zeros((6, 8, 8), dtype=np.float32)
+
+    observation[0, :, :] = (board == piece('pawn')).astype(np.float32)-(board == piece('PAWN')).astype(np.float32)
+    observation[1, :, :] = (board == piece('rook')).astype(np.float32) - (board == piece('ROOK')).astype(np.float32)
+    observation[2, :, :] = (board == piece('knight')).astype(np.float32) - (board == piece('KNIGHT')).astype(np.float32)
+    observation[3, :, :] = (board == piece('bishop')).astype(np.float32) - (board == piece('BISHOP')).astype(np.float32)
+    observation[4, :, :] = (board == piece('queen')).astype(np.float32) - (board == piece('QUEEN')).astype(np.float32)
+    observation[5, :, :] = (board == piece('king')).astype(np.float32) - (board == piece('KING')).astype(np.float32)
+
+    return observation
 
 
 def fen_to_svg(fen: str) -> str:
@@ -180,8 +203,6 @@ class DiagonalChess:
         Plane 3 represents bishops
         Plane 4 represents queens
         Plane 5 represents kings
-        Plane 6 represents 1/fullmove number (needed for markov property)
-        Plane 7 represents can-claim-draw
 
         #### Example
         ```py
