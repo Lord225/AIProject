@@ -7,7 +7,7 @@ import config_file
 import tensorboard
 from reinforce.data_collector import run_episode_and_get_history
 from reinforce.replay_memory import ReplayMemory
-from reinforce.train import training_step
+from reinforce.train import training_step_dqnet_target_critic
 
 # RL implementation 5
 # This implements the algorithm with the following changes:
@@ -88,7 +88,7 @@ def run():
         if len(replay_memory) > batch_size+1:
             batch = replay_memory.sample(batch_size)
     
-            training_step(batch, minibatch_size, train_iters_per_episode, discount_rate, target_model, actor_model, optimizer, n_outputs)
+            training_step_dqnet_target_critic(batch, minibatch_size, train_iters_per_episode, discount_rate, target_model, actor_model, optimizer, n_outputs)
         # update target network
         if episode % target_update_freq == 0:
             target_model.set_weights(actor_model.get_weights())
