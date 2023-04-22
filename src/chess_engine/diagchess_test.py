@@ -2,12 +2,8 @@ import unittest
 
 import numpy as np
 
-<<<<<<< HEAD
-from .diagchess import board_to_observation, generate_start_board, pawn_legal_moves, rook_legal_moves, bishop_legal_moves, queen_legal_moves, knight_legal_moves, king_legal_moves, piece, piece_to_fen, to_fen
-=======
-from .diagchess import ILLEGAL_MOVE_PENALTY_1, LEGAL_MOVE_REWARD, WRONG_PIECE_COLOR_PENALTY, board_to_observation, generate_move, generate_start_board, pawn_legal_moves, rook_legal_moves, bishop_legal_moves, queen_legal_moves, piece, piece_to_fen, to_fen
-from .diagchess import board_to_observation, generate_start_board, pawn_legal_moves, rook_legal_moves, bishop_legal_moves, queen_legal_moves, knight_legal_moves, piece, piece_to_fen, to_fen
->>>>>>> 68af5648b9579c2ee3e996e1c768eb2109659159
+from .diagchess import ILLEGAL_MOVE_PENALTY_1, LEGAL_MOVE_REWARD, WRONG_PIECE_COLOR_PENALTY, generate_move
+from .diagchess import board_to_observation, generate_start_board, pawn_legal_moves, rook_legal_moves, bishop_legal_moves, queen_legal_moves, knight_legal_moves, queen_legal_moves, king_legal_moves, piece, piece_to_fen, to_fen
 
 def array_equal_print(arr1: np.ndarray, arr2: np.ndarray) -> bool:
     if np.array_equal(arr1, arr2):
