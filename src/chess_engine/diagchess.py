@@ -4,9 +4,9 @@ import numba as nb
 import chess
 import chess.svg
 
-WRONG_PIECE_COLOR_PENALTY = -1
-ILLEGAL_MOVE_PENALTY_1 = -0.1
-ILLEGAL_MOVE_PENALTY_2 = -0.1
+WRONG_PIECE_COLOR_PENALTY = 0
+ILLEGAL_MOVE_PENALTY_1 = 0
+ILLEGAL_MOVE_PENALTY_2 = 0
 LEGAL_MOVE_REWARD = 0.01
 
 
@@ -340,9 +340,9 @@ def generate_move(board: np.ndarray, x1: int, y1: int, x2: int, y2: int, isBlack
     if (piece > 0) != isBlack:
         move = random_legal_move(board, isBlack)
         if move is None:
-            return None, 0
+            return None, 0 # no legal moves, game over
         else:
-            return move, WRONG_PIECE_COLOR_PENALTY
+            return move, WRONG_PIECE_COLOR_PENALTY # wrong piece color
         
 
     # check what are the legal moves
@@ -356,15 +356,11 @@ def generate_move(board: np.ndarray, x1: int, y1: int, x2: int, y2: int, isBlack
         legal = np.argwhere(legal != 0)
         if len(legal) != 0:
             x2, y2 = legal[np.random.randint(0, len(legal))]
-            return (x1, y1, x2, y2), ILLEGAL_MOVE_PENALTY_1
+            return (x1, y1, x2, y2), ILLEGAL_MOVE_PENALTY_1 # legal pawn, illegal move
         else:
             # no legal moves, try any move
-            return random_legal_move(board, isBlack), ILLEGAL_MOVE_PENALTY_2
+            return random_legal_move(board, isBlack), ILLEGAL_MOVE_PENALTY_2 # no legal moves
         
-    
-
-        
-
 
 
 
@@ -376,8 +372,10 @@ if __name__ == '__main__':
     board = generate_start_board()
     print(board_to_observation(board))
     board = np.zeros((8, 8), dtype=np.int8)
+    
     # board[5,5] = piece("pawn")
     board[2,2] = piece("PAWN")
+
     # moves = pawn_legal_moves(board,5,5)
     moves = pawn_legal_moves(board,2,2)
 

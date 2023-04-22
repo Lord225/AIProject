@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from .diagchess import ILLEGAL_MOVE_PENALTY_1, LEGAL_MOVE_REWARD, WRONG_PIECE_COLOR_PENALTY, board_to_observation, generate_move, generate_start_board, pawn_legal_moves, rook_legal_moves, bishop_legal_moves, queen_legal_moves, piece, piece_to_fen, to_fen
+from .diagchess import ILLEGAL_MOVE_PENALTY_1, ILLEGAL_MOVE_PENALTY_2, LEGAL_MOVE_REWARD, WRONG_PIECE_COLOR_PENALTY, board_to_observation, generate_move, generate_start_board, pawn_legal_moves, rook_legal_moves, bishop_legal_moves, queen_legal_moves, piece, piece_to_fen, to_fen
 from .diagchess import board_to_observation, generate_start_board, pawn_legal_moves, rook_legal_moves, bishop_legal_moves, queen_legal_moves, knight_legal_moves, piece, piece_to_fen, to_fen
 
 def array_equal_print(arr1: np.ndarray, arr2: np.ndarray) -> bool:
@@ -354,7 +354,7 @@ class TestTransforms(unittest.TestCase):
 class TestMoveChoosing(unittest.TestCase):
     """
     Board cheetsheet:
-        0 1 2 3 4 5 6 7
+      0 1 2 3 4 5 6 7
     0       p r b n k 
     1         p p q n 
     2           p p b 
@@ -371,6 +371,11 @@ class TestMoveChoosing(unittest.TestCase):
         move = generate_move(board, 0, 3, 1, 3, False)
         # moves, reward for legal move
         self.assertEqual(move, ((0, 3, 1, 3), LEGAL_MOVE_REWARD))
+
+        # move a pawn as black
+        move = generate_move(board, 3, 0, 3, 2, True)
+        self.assertEqual(move, ((3, 0, 3, 2), LEGAL_MOVE_REWARD))
+
     def test_legal_move_as_other_color(self):
         board = generate_start_board()
         # move wite pawn as black
@@ -378,6 +383,11 @@ class TestMoveChoosing(unittest.TestCase):
         self.assertEqual(reward, WRONG_PIECE_COLOR_PENALTY)
     def test_illegal_moves(self):
         board = generate_start_board()
+        
         # move a pawn as white onto illegal square
         _, reward = generate_move(board, 2, 5, 0, 0, False)
         self.assertEqual(reward, ILLEGAL_MOVE_PENALTY_1)
+
+        # try moving king
+        _, reward = generate_move(board, 0, 7, 0, 6, False)
+        self.assertEqual(reward, ILLEGAL_MOVE_PENALTY_2)
