@@ -129,6 +129,7 @@ def pawn_legal_moves(board: np.ndarray, x: int, y: int):
         moves[y+direction, x+direction] = piece
     
     return moves
+
 @nb.njit('int8[:,:](int8[:,:], int32, int32)', cache=True)
 def rook_legal_moves(board: np.ndarray, x: int, y: int):
     moves = np.zeros((8, 8), dtype=np.int8)
@@ -174,6 +175,63 @@ def rook_legal_moves(board: np.ndarray, x: int, y: int):
 
     return moves
 
+@nb.njit('int8[:,:](int8[:,:], int32, int32)', cache=True)
+def bishop_legal_moves(board: np.ndarray, x: int, y: int):
+    moves = np.zeros((8, 8), dtype=np.int8)
+    piece = board[y, x]
+
+    # Check valid moves along the top-left to bottom-right diagonal
+    i, j = x + 1, y + 1
+    while i < 8 and j < 8:
+        if board[j, i] == 0:
+            moves[j, i] = piece
+        elif board[j, i] * piece < 0:
+            moves[j, i] = piece
+            break
+        else:
+            break
+        i += 1
+        j += 1
+
+    i, j = x - 1, y - 1
+    while i >= 0 and j >= 0:
+        if board[j, i] == 0:
+            moves[j, i] = piece
+        elif board[j, i] * piece < 0:
+            moves[j, i] = piece
+            break
+        else:
+            break
+        i -= 1
+        j -= 1
+
+    # Check valid moves along the top-right to bottom-left diagonal
+    i, j = x + 1, y - 1
+    while i < 8 and j >= 0:
+        if board[j, i] == 0:
+            moves[j, i] = piece
+        elif board[j, i] * piece < 0:
+            moves[j, i] = piece
+            break
+        else:
+            break
+        i += 1
+        j -= 1
+
+    i, j = x - 1, y + 1
+    while i >= 0 and j < 8:
+        if board[j, i] == 0:
+            moves[j, i] = piece
+        elif board[j, i] * piece < 0:
+            moves[j, i] = piece
+            break
+        else:
+            break
+        i -= 1
+        j += 1
+
+    return moves
+
 
 def legal_moves(board: np.ndarray, x,y):
     piece_value = board[y, x]
@@ -181,13 +239,11 @@ def legal_moves(board: np.ndarray, x,y):
     if abs(piece_value) == piece('pawn'):
         return pawn_legal_moves(board, x, y)
     elif abs(piece_value) == piece('rook'):
-        return np.zeros((8, 8), dtype=np.int8)
         return rook_legal_moves(board, x, y)
     elif abs(piece_value) == piece('knight'):
         return np.zeros((8, 8), dtype=np.int8)
         return knight_legal_moves(board, x, y)
     elif abs(piece_value) == piece('bishop'):
-        return np.zeros((8, 8), dtype=np.int8)
         return bishop_legal_moves(board, x, y)
     elif abs(piece_value) == piece('queen'):
         return np.zeros((8, 8), dtype=np.int8)

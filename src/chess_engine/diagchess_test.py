@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from .diagchess import board_to_observation, generate_start_board, pawn_legal_moves, rook_legal_moves, piece, piece_to_fen, to_fen
+from .diagchess import board_to_observation, generate_start_board, pawn_legal_moves, rook_legal_moves, bishop_legal_moves, piece, piece_to_fen, to_fen
 
 class TestLegalMoves(unittest.TestCase):
     def test_pawn_legal_moves(self):
@@ -114,6 +114,42 @@ class TestLegalMoves(unittest.TestCase):
         # print(moves)
         # print(legal_moves)
         self.assertTrue(np.array_equal(moves, legal_moves))
+
+    def test_bishop_legal_moves(self):
+        board = np.zeros((8, 8), dtype=np.int8)
+        board[5,5] = piece("BISHOP")
+
+        legal_moves = np.array([[4, 0, 0, 0, 0, 0, 0, 0],
+                                [0, 4, 0, 0, 0, 0, 0, 0],
+                                [0, 0, 4, 0, 0, 0, 0, 0],
+                                [0, 0, 0, 4, 0, 0, 0, 4],
+                                [0, 0, 0, 0, 4, 0, 4, 0],
+                                [0, 0, 0, 0, 0, 0, 0, 0],
+                                [0, 0, 0, 0, 4, 0, 4, 0],
+                                [0, 0, 0, 4, 0, 0, 0, 4],]).astype(np.int8)
+        moves = bishop_legal_moves(board,5,5)
+
+        # print(moves)
+        # print(legal_moves)
+        self.assertTrue(np.array_equal(moves, legal_moves))
+
+
+        legal_moves = np.array([[0, 0, 0, 0, 0, 0, 0, 0],
+                                [0, 0, 0, 0, 0, 0, 0, 0],
+                                [0, 0, 4, 0, 0, 0, 0, 0],
+                                [0, 0, 0, 4, 0, 0, 0, 0],
+                                [0, 0, 0, 0, 4, 0, 4, 0],
+                                [0, 0, 0, 0, 0, 0, 0, 0],
+                                [0, 0, 0, 0, 4, 0, 4, 0],
+                                [0, 0, 0, 0, 0, 0, 0, 4],]).astype(np.int8)
+        board[1,1] = piece("ROOK")
+        board[6,4] = piece("bishop")
+        board[4,6] = piece("pawn")
+        moves = bishop_legal_moves(board,5,5)
+        print(moves)
+        print(legal_moves)
+        self.assertTrue(np.array_equal(moves, legal_moves))
+
 
 class TestObservation(unittest.TestCase):
     def test_board_to_observation(self):
