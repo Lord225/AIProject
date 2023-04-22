@@ -1,7 +1,14 @@
+from typing import Optional, Tuple
 import numpy as np
 import numba as nb
 import chess
 import chess.svg
+
+WRONG_PIECE_COLOR_PENALTY = -1
+ILLEGAL_MOVE_PENALTY_1 = -0.1
+ILLEGAL_MOVE_PENALTY_2 = -0.1
+LEGAL_MOVE_REWARD = 0.01
+
 
 @nb.njit('int8(types.unicode_type)',cache=True)
 def piece(name: str) -> int:
@@ -289,15 +296,15 @@ def king_legal_moves(board: np.ndarray, x: int, y: int):
 def legal_moves(board: np.ndarray, x,y):
     piece_value = board[y, x]
     
-    if abs(piece_value) == piece('pawn'):
+    if abs(piece_value) == piece('PAWN'):
         return pawn_legal_moves(board, x, y)
-    elif abs(piece_value) == piece('rook'):
+    elif abs(piece_value) == piece('ROOK'):
         return rook_legal_moves(board, x, y)
-    elif abs(piece_value) == piece('knight'):
+    elif abs(piece_value) == piece('KNIGHT'):
         return knight_legal_moves(board, x, y)
-    elif abs(piece_value) == piece('bishop'):
+    elif abs(piece_value) == piece('BISHOP'):
         return bishop_legal_moves(board, x, y)
-    elif abs(piece_value) == piece('queen'):
+    elif abs(piece_value) == piece('QUEEN'):
         return queen_legal_moves(board, x, y)
     elif abs(piece_value) == piece('king'):
         return king_legal_moves(board, x, y)
@@ -317,6 +324,73 @@ def board_to_observation(board: np.ndarray) -> np.ndarray:
 
     return observation
 
+@nb.njit(cache=True)
+def random_legal_move(board: np.ndarray, isBlack: bool) -> Optional[Tuple[int, int, int, int]]:
+    # choose random piece
+    pieces = np.argwhere((board > 0) == isBlack)
+
+    # if no pieces, return None
+    if len(pieces) == 0:
+        return None
+    
+    # random permutation of pieces
+    np.random.shuffle(pieces)
+
+    for x1, y1 in pieces:
+        legal = legal_moves(board, x1, y1)
+
+        # choose random legal move
+        legal = np.argwhere(legal != 0)
+
+        if len(legal) == 0:
+            continue
+        
+        # choose random legal move
+        x2, y2 = legal[np.random.randint(0, len(legal))]
+
+        return (x1, y1, x2, y2)
+    
+    return None
+
+@nb.njit(cache=True)
+def generate_move(board: np.ndarray, x1: int, y1: int, x2: int, y2: int, isBlack: bool) -> Tuple[Optional[Tuple[int, int, int, int]], float]:
+    """
+    generates legal move and penalty from any illegal move, return None if no legal moves are possible
+    """
+    # check if move is legal
+    piece = board[y1, x1]
+
+    # check if piece is correct color
+    if (piece > 0) != isBlack:
+        move = random_legal_move(board, isBlack)
+        if move is None:
+            return None, 0
+        else:
+            return move, WRONG_PIECE_COLOR_PENALTY
+        
+
+    # check what are the legal moves
+    legal = legal_moves(board, x1, y1)
+
+    if legal[y2, x2] != 0:
+        # legal move
+        return (x1, y1, x2, y2), LEGAL_MOVE_REWARD
+    else:
+        # choose random legal move
+        legal = np.argwhere(legal != 0)
+        if len(legal) != 0:
+            x2, y2 = legal[np.random.randint(0, len(legal))]
+            return (x1, y1, x2, y2), ILLEGAL_MOVE_PENALTY_1
+        else:
+            # no legal moves, try any move
+            return random_legal_move(board, isBlack), ILLEGAL_MOVE_PENALTY_2
+        
+    
+
+        
+
+
+
 
 def fen_to_svg(fen: str) -> str:
     return chess.svg.board(chess.Board(fen), size=500)
@@ -330,5 +404,7 @@ if __name__ == '__main__':
     board[2,2] = piece("PAWN")
     # moves = pawn_legal_moves(board,5,5)
     moves = pawn_legal_moves(board,2,2)
+
+    generate_move(board, 2, 2, 2, 3, True)
 
     print(moves)

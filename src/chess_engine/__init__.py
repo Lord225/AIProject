@@ -61,10 +61,10 @@ class DiagonalChess:
         * add small reward for legal moves
         * use 4 numbers to indicate the move (from, to, promote to, promote from) instead of 8x8x8x8 array of probabilities
         * mask probabilities of illegal moves to 0 and use max to select the move
-
         """
 
-        raise NotImplementedError
+        raise 
+        
 
     def render(self):
         """
