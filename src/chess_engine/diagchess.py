@@ -323,7 +323,7 @@ def all_legal_moves(board: np.ndarray, isBlack: bool) -> np.ndarray:
     moves = np.zeros((8, 8), dtype=np.int8)
     piece_positions = np.where(board * isBlack > 0)
     for x, y in piece_positions:
-        moves += legal_moves(board, x, y)
+        moves += legal_moves(board, y, x)
     return moves
 
 @nb.njit('int8[:,:,:](int8[:,:])', cache=True)
@@ -352,7 +352,7 @@ def random_legal_move(board: np.ndarray, isBlack: bool) -> Optional[Tuple[int, i
     np.random.shuffle(pieces)
 
     for x1, y1 in pieces:
-        legal = legal_moves(board, x1, y1)
+        legal = legal_moves(board, y1, x1)
 
         # choose random legal move
         legal = np.argwhere(legal != 0)
@@ -361,12 +361,9 @@ def random_legal_move(board: np.ndarray, isBlack: bool) -> Optional[Tuple[int, i
             continue
         
         # choose random legal move
-        y2, x2 = legal[np.random.randint(0, len(legal))]
-
-        print(f"random move: {x1}, {y1} -> {x2}, {y2}")
+        x2, y2 = legal[np.random.randint(0, len(legal))]
 
         return (x1, y1, x2, y2)
-    
     return None
 
 @nb.njit(cache=True)
@@ -387,8 +384,6 @@ def generate_move(board: np.ndarray, x1: int, y1: int, x2: int, y2: int, isBlack
         
     # check what are the legal moves
     legal = legal_moves(board, x1, y1)
-
-    print(legal, x1, y1)
 
     if legal[y2, x2] != 0:
         # legal move
@@ -447,7 +442,7 @@ def array_action_to_move(board: np.ndarray, action: np.ndarray, isBlack: bool) -
     x1, y1 = np.unravel_index(np.argmax(moves_from), moves_from.shape)
 
     # check possible moves
-    legal_to = legal_moves(board, x1, y1)
+    legal_to = legal_moves(board, y1, x1)
     moves_to = to_move * legal_to
 
     # choose max position
@@ -460,11 +455,11 @@ def array_action_to_move(board: np.ndarray, action: np.ndarray, isBlack: bool) -
 def make_a_move(board: np.ndarray, x1: int, y1: int, x2: int, y2: int, isBlack: bool) -> Tuple[bool, float]:
     print("chosed move", x1, y1, x2, y2)
     move, reward = generate_move(board, x1, y1, x2, y2, isBlack) # type: ignore
-    
     if move is None:
         return True, 0
     else:
         x1, y1, x2, y2 = move
+        print("used move", x1, y1, x2, y2)
         # get piece
         piece = board[y1, x1]
         
