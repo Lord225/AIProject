@@ -4,17 +4,17 @@ import numba as nb
 import chess
 import chess.svg
 
-WRONG_PIECE_COLOR_PENALTY = -1
+WRONG_PIECE_COLOR_PENALTY = -0.01
 ILLEGAL_MOVE_PENALTY_1 = -0.01
-ILLEGAL_MOVE_PENALTY_2 = -0.02
-LEGAL_MOVE_REWARD = 0.01
+ILLEGAL_MOVE_PENALTY_2 = -0.01
+LEGAL_MOVE_REWARD = 0.1
 
-PAWN_CAPTURE_REWARD = 1
+PAWN_CAPTURE_REWARD = 2
 ROOK_CAPTURE_REWARD = 5
 KNIGHT_CAPTURE_REWARD = 3
 BISHOP_CAPTURE_REWARD = 3
 QUEEN_CAPTURE_REWARD = 9
-KING_CAPTURE_REWARD = 100
+KING_CAPTURE_REWARD = 15
 
 @nb.njit('int8(types.unicode_type)',cache=True)
 def piece(name: str) -> int:
@@ -321,22 +321,25 @@ def legal_moves(board: np.ndarray, x, y):
 @nb.njit('int8[:,:](int8[:,:], boolean)', cache=True)
 def all_legal_moves(board: np.ndarray, isBlack: bool) -> np.ndarray:
     moves = np.zeros((8, 8), dtype=np.int8)
-    piece_positions = np.where(board * isBlack > 0)
+    piece_positions = np.where((board > 0) != isBlack)
     for x, y in piece_positions:
         moves += legal_moves(board, y, x)
     return moves
 
-@nb.njit('int8[:,:,:](int8[:,:])', cache=True)
-def board_to_observation(board: np.ndarray) -> np.ndarray:
-    observation = np.zeros((6, 8, 8), dtype=np.int8)
+@nb.njit('int8[:,:,:](int8[:,:], boolean)', cache=True)
+def board_to_observation(board: np.ndarray, isBlack: bool) -> np.ndarray:
+    observation = np.zeros((8, 8, 6), dtype=np.int8)
 
-    observation[0, :, :] = (board == piece('pawn')).astype(np.int8) - (board == piece('PAWN')).astype(np.int8)
-    observation[1, :, :] = (board == piece('rook')).astype(np.int8) - (board == piece('ROOK')).astype(np.int8)
-    observation[2, :, :] = (board == piece('knight')).astype(np.int8) - (board == piece('KNIGHT')).astype(np.int8)
-    observation[3, :, :] = (board == piece('bishop')).astype(np.int8) - (board == piece('BISHOP')).astype(np.int8)
-    observation[4, :, :] = (board == piece('queen')).astype(np.int8) - (board == piece('QUEEN')).astype(np.int8)
-    observation[5, :, :] = (board == piece('king')).astype(np.int8) - (board == piece('KING')).astype(np.int8)
-
+    observation[:, :, 0] = (board == piece('pawn')).astype(np.int8) - (board == piece('PAWN')).astype(np.int8)
+    observation[:, :, 1] = (board == piece('rook')).astype(np.int8) - (board == piece('ROOK')).astype(np.int8)
+    observation[:, :, 2] = (board == piece('knight')).astype(np.int8) - (board == piece('KNIGHT')).astype(np.int8)
+    observation[:, :, 3] = (board == piece('bishop')).astype(np.int8) - (board == piece('BISHOP')).astype(np.int8)
+    observation[:, :, 4] = (board == piece('queen')).astype(np.int8) - (board == piece('QUEEN')).astype(np.int8)
+    observation[:, :, 5] = (board == piece('king')).astype(np.int8) - (board == piece('KING')).astype(np.int8)
+    
+    # generate legal moves
+    #observation[6, :, :] = all_legal_moves(board, isBlack)
+    
     return observation
 
 @nb.njit(cache=True)
@@ -453,13 +456,13 @@ def array_action_to_move(board: np.ndarray, action: np.ndarray, isBlack: bool) -
 
 @nb.njit(cache=True)
 def make_a_move(board: np.ndarray, x1: int, y1: int, x2: int, y2: int, isBlack: bool) -> Tuple[bool, float]:
-    print("chosed move", x1, y1, x2, y2)
+    #print("chosed move", x1, y1, x2, y2)
     move, reward = generate_move(board, x1, y1, x2, y2, isBlack) # type: ignore
     if move is None:
         return True, 0
     else:
         x1, y1, x2, y2 = move
-        print("used move", x1, y1, x2, y2)
+        #print("used move", x1, y1, x2, y2)
         # get piece
         piece = board[y1, x1]
         
@@ -493,7 +496,7 @@ def fen_to_svg(fen: str) -> str:
 
 if __name__ == '__main__':
     board = generate_start_board()
-    print(board_to_observation(board))
+    print(board_to_observation(board, False))
     board = np.zeros((8, 8), dtype=np.int8)
     
     # board[5,5] = piece("pawn")

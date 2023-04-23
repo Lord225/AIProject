@@ -295,7 +295,7 @@ class TestObservation(unittest.TestCase):
         board[5,5] = piece("pawn")
         board[2,2] = piece("PAWN")
 
-        observation = board_to_observation(board)
+        observation = board_to_observation(board, False)
         legal_observation = np.zeros((6, 8, 8), dtype=np.int8)
         legal_observation[0, 5, 5] = 1
         legal_observation[0, 2, 2] = -1
@@ -304,7 +304,7 @@ class TestObservation(unittest.TestCase):
     def test_start_board_as_observation(self):
         board = generate_start_board()
 
-        observation = board_to_observation(board)
+        observation = board_to_observation(board, False)
 
         expected = np.array(
             [[
