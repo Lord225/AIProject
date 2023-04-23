@@ -4,11 +4,17 @@ import numba as nb
 import chess
 import chess.svg
 
-WRONG_PIECE_COLOR_PENALTY = 0
-ILLEGAL_MOVE_PENALTY_1 = 0
-ILLEGAL_MOVE_PENALTY_2 = 0
+WRONG_PIECE_COLOR_PENALTY = -1
+ILLEGAL_MOVE_PENALTY_1 = -0.01
+ILLEGAL_MOVE_PENALTY_2 = -0.02
 LEGAL_MOVE_REWARD = 0.01
 
+PAWN_CAPTURE_REWARD = 1
+ROOK_CAPTURE_REWARD = 5
+KNIGHT_CAPTURE_REWARD = 3
+BISHOP_CAPTURE_REWARD = 3
+QUEEN_CAPTURE_REWARD = 9
+KING_CAPTURE_REWARD = 100
 
 @nb.njit('int8(types.unicode_type)',cache=True)
 def piece(name: str) -> int:
@@ -294,7 +300,7 @@ def king_legal_moves(board: np.ndarray, x: int, y: int):
     return moves
 
 @nb.njit('int8[:,:](int8[:,:], int32, int32)', cache=True)
-def legal_moves(board: np.ndarray, x,y):
+def legal_moves(board: np.ndarray, x, y):
     piece_value = board[y, x]
     
     if abs(piece_value) == piece('PAWN'):
@@ -312,6 +318,14 @@ def legal_moves(board: np.ndarray, x,y):
 
     return np.zeros((8, 8), dtype=np.int8)
 
+@nb.njit('int8[:,:](int8[:,:], boolean)', cache=True)
+def all_legal_moves(board: np.ndarray, isBlack: bool) -> np.ndarray:
+    moves = np.zeros((8, 8), dtype=np.int8)
+    piece_positions = np.where(board * isBlack > 0)
+    for x, y in piece_positions:
+        moves += legal_moves(board, x, y)
+    return moves
+
 @nb.njit('int8[:,:,:](int8[:,:])', cache=True)
 def board_to_observation(board: np.ndarray) -> np.ndarray:
     observation = np.zeros((6, 8, 8), dtype=np.int8)
@@ -328,7 +342,7 @@ def board_to_observation(board: np.ndarray) -> np.ndarray:
 @nb.njit(cache=True)
 def random_legal_move(board: np.ndarray, isBlack: bool) -> Optional[Tuple[int, int, int, int]]:
     # choose random piece
-    pieces = np.argwhere((board > 0) == isBlack)
+    pieces = np.argwhere((board > 0) != isBlack)
 
     # if no pieces, return None
     if len(pieces) == 0:
@@ -347,7 +361,9 @@ def random_legal_move(board: np.ndarray, isBlack: bool) -> Optional[Tuple[int, i
             continue
         
         # choose random legal move
-        x2, y2 = legal[np.random.randint(0, len(legal))]
+        y2, x2 = legal[np.random.randint(0, len(legal))]
+
+        print(f"random move: {x1}, {y1} -> {x2}, {y2}")
 
         return (x1, y1, x2, y2)
     
@@ -369,9 +385,10 @@ def generate_move(board: np.ndarray, x1: int, y1: int, x2: int, y2: int, isBlack
         else:
             return move, WRONG_PIECE_COLOR_PENALTY # wrong piece color
         
-
     # check what are the legal moves
     legal = legal_moves(board, x1, y1)
+
+    print(legal, x1, y1)
 
     if legal[y2, x2] != 0:
         # legal move
@@ -380,12 +397,100 @@ def generate_move(board: np.ndarray, x1: int, y1: int, x2: int, y2: int, isBlack
         # choose random legal move
         legal = np.argwhere(legal != 0)
         if len(legal) != 0:
-            x2, y2 = legal[np.random.randint(0, len(legal))]
+            y2, x2 = legal[np.random.randint(0, len(legal))]
             return (x1, y1, x2, y2), ILLEGAL_MOVE_PENALTY_1 # legal pawn, illegal move
-        else:
+        else: 
             # no legal moves, try any move
             return random_legal_move(board, isBlack), ILLEGAL_MOVE_PENALTY_2 # no legal moves
+
+@nb.njit(cache=True)
+def capture_reward(captured_piece: int):
+    if captured_piece == piece('PAWN'):
+        return PAWN_CAPTURE_REWARD
+    elif captured_piece == piece('ROOK'):
+        return ROOK_CAPTURE_REWARD
+    elif captured_piece == piece('KNIGHT'):
+        return KNIGHT_CAPTURE_REWARD
+    elif captured_piece == piece('BISHOP'):
+        return BISHOP_CAPTURE_REWARD
+    elif captured_piece == piece('QUEEN'):
+        return QUEEN_CAPTURE_REWARD
+    elif captured_piece == piece('KING'):
+        return KING_CAPTURE_REWARD
+    else:
+        return 0
+
+@nb.njit(cache=True)
+def move_to_int(x1: int, y1: int, x2: int, y2: int) -> int:
+    return x1 * 64*64*64 + y1 * 64*64 + x2 * 64 + y2
+
+@nb.njit(cache=True)
+def int_action_to_move(action: int) -> Tuple[int, int, int, int]:
+    x1 = (action // 8 // 8 // 8) % 8
+    y1 = (action // 8 // 8) % 8
+    x2 = (action // 8) % 8
+    y2 = (action) % 8
+
+    return x1, y1, x2, y2
+
+@nb.njit(cache=True)
+def array_action_to_move(board: np.ndarray, action: np.ndarray, isBlack: bool) -> int:
+    # action is array 8x8x2, split into 8x8 and 8x8
+    from_move = action[:8, :8]
+    to_move = action[8:, :8]
+
+    # take all allay positions
+    legal_from = board * isBlack > 0
+    moves_from = from_move * legal_from
+
+    # choose max position
+    x1, y1 = np.unravel_index(np.argmax(moves_from), moves_from.shape)
+
+    # check possible moves
+    legal_to = legal_moves(board, x1, y1)
+    moves_to = to_move * legal_to
+
+    # choose max position
+    x2, y2 = np.unravel_index(np.argmax(moves_to), moves_to.shape)
+
+    return move_to_int(x1, y1, x2, y2) # type: ignore
+
+
+@nb.njit(cache=True)
+def make_a_move(board: np.ndarray, x1: int, y1: int, x2: int, y2: int, isBlack: bool) -> Tuple[bool, float]:
+    print("chosed move", x1, y1, x2, y2)
+    move, reward = generate_move(board, x1, y1, x2, y2, isBlack) # type: ignore
     
+    if move is None:
+        return True, 0
+    else:
+        x1, y1, x2, y2 = move
+        # get piece
+        piece = board[y1, x1]
+        
+        # get target piece
+        target_piece = board[y2, x2]
+
+        # get reward
+        reward += capture_reward(target_piece)
+
+        # move piece
+        board[y2, x2] = piece
+
+        # remove piece from old position
+        board[y1, x1] = 0
+    
+    return False, reward
+
+@nb.njit(cache=True)
+def make_move_from_action(board: np.ndarray, action: int, isBlack: bool) -> Tuple[bool, float]:
+    x1, y1, x2, y2 = int_action_to_move(action)
+    return make_a_move(board, x1, y1, x2, y2, isBlack)
+
+@nb.njit(cache=True)
+def make_move_from_prob(board: np.ndarray, prob: np.ndarray, isBlack: bool) -> Tuple[bool, float]:
+    action = array_action_to_move(board, prob, isBlack)
+    return make_move_from_action(board, action, isBlack)
 
 def fen_to_svg(fen: str) -> str:
     return chess.svg.board(chess.Board(fen), size=500)

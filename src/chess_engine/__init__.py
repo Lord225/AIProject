@@ -1,19 +1,21 @@
 from typing import Tuple
 import numpy as np
 
-from .diagchess import board_to_observation, fen_to_svg, generate_start_board, piece_to_fen, to_fen
+from .diagchess import all_legal_moves, board_to_observation, fen_to_svg, generate_start_board, make_a_move, make_move_from_action, make_move_from_prob, piece_to_fen, to_fen
 
 def action(move_str: str) -> int:
-    x1ord = ord(move_str[0]) - ord('a')
-    y1ord = ord(move_str[1]) - ord('1')
-    x2ord = ord(move_str[2]) - ord('a')
-    y2ord = ord(move_str[3]) - ord('1')
+    x1ord = ord(move_str[0]) - ord("a")
+    y1ord = 8 - (ord(move_str[1]) - ord("0"))
+    x2ord = ord(move_str[2]) - ord("a")
+    y2ord = 8 - (ord(move_str[3]) - ord("0"))
 
-    return x1ord + y1ord * 8 + x2ord * 64 + y2ord * 512
+    print(x1ord, y1ord, x2ord, y2ord)
+
+    return x1ord * 8 * 8 * 8 + y1ord * 8 * 8 + x2ord * 8 + y2ord
+
 
 class DiagonalChess:
     def __init__(self):
-        self.board = np.zeros((8, 8), dtype=np.int8)
         self.reset()
 
 
@@ -23,9 +25,10 @@ class DiagonalChess:
         """
         
         self.board = generate_start_board()
+        self.isBlack = False
     
 
-    def step(self, action: int) -> Tuple[np.ndarray, int, bool]:
+    def step(self, action: int) -> Tuple[np.ndarray, float, bool]:
         """
         ## returns
         - observation: np.ndarray
@@ -70,8 +73,28 @@ class DiagonalChess:
         * use 4 numbers to indicate the move (from, to, promote to, promote from) instead of 8x8x8x8 array of probabilities
         * mask probabilities of illegal moves to 0 and use max to select the move
         """
+
+        # make move
+        done, reward = make_move_from_action(self.board, action, self.isBlack)
+
+        # switch player
+        self.isBlack = not self.isBlack
         
-        return board_to_observation(self.board), 0, False
+        return board_to_observation(self.board), reward, done
+
+    def step_human(self, move: str) -> Tuple[np.ndarray, float, bool]:
+        return self.step(action(move))
+    
+    def step_cords(self, from_x: int, from_y: int, to_x: int, to_y: int) -> Tuple[np.ndarray, float, bool]:
+        return self.step(from_x + from_y * 8 + to_x * 64 + to_y * 512)
+    
+    def step_probs(self, action: np.ndarray):
+        done, reward = make_move_from_prob(self.board, action, self.isBlack)
+
+        # switch player
+        self.isBlack = not self.isBlack
+
+        return board_to_observation(self.board), reward, done
         
 
     def render(self):
@@ -80,6 +103,10 @@ class DiagonalChess:
         """
 
         return fen_to_svg(to_fen(self.board))
+
+    def allowed_moves(self):
+        return all_legal_moves(self.board, self.isBlack)
+    
     
     def __str__(self):
         output = ''
