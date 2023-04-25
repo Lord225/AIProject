@@ -417,7 +417,7 @@ def capture_reward(captured_piece: int):
 
 @nb.njit(cache=True)
 def move_to_int(x1: int, y1: int, x2: int, y2: int) -> int:
-    return x1 * 64*64*64 + y1 * 64*64 + x2 * 64 + y2
+    return (x1%8) * 64*64*64 + (y1%8) * 64*64 + (x2%8) * 64 + (y2%8)
 
 @nb.njit(cache=True)
 def int_action_to_move(action: int) -> Tuple[int, int, int, int]:
@@ -429,24 +429,42 @@ def int_action_to_move(action: int) -> Tuple[int, int, int, int]:
     return x1, y1, x2, y2
 
 @nb.njit(cache=True)
-def array_action_to_move(board: np.ndarray, action: np.ndarray, isBlack: bool) -> int:
+def array_action_to_move(board: np.ndarray, action: np.ndarray, isBlack: bool) -> Optional[int]:
     # action is array 8x8x2, split into 8x8 and 8x8
-    from_move = action[:8, :8]
-    to_move = action[8:, :8]
+    from_move = action[:, :, 0] 
+    to_move = action[:, :, 1]
 
     # take all allay positions
-    legal_from = board * isBlack > 0
-    moves_from = from_move * legal_from
+    legal_from = (board <= 0) != isBlack
+    moves_from = from_move * legal_from  
+    
+    # get max position
+    xf = np.argmax(moves_from)
 
-    # choose max position
-    x1, y1 = np.unravel_index(np.argmax(moves_from), moves_from.shape)
+    # get x y, unravel_index is not working with numpy
+    x1 = xf % 8
+    y1 = (xf // 8) % 8
 
     # check possible moves
     legal_to = legal_moves(board, y1, x1)
     moves_to = to_move * legal_to
+    
+    # if no legal moves, choose random legal move
+    if moves_to.sum() == 0:
+        move = random_legal_move(board, isBlack)
 
-    # choose max position
-    x2, y2 = np.unravel_index(np.argmax(moves_to), moves_to.shape)
+        if move is None:
+            return None
+        else:
+            return move_to_int(*move)
+
+    
+    # get max
+    xt = np.argmax(moves_to)
+
+    # get x y, unravel_index is not working with numpy
+    x2 = xt % 8
+    y2 = (xt // 8) % 8
 
     return move_to_int(x1, y1, x2, y2) # type: ignore
 
@@ -485,6 +503,9 @@ def make_move_from_action(board: np.ndarray, action: int, isBlack: bool) -> Tupl
 @nb.njit(cache=True)
 def make_move_from_prob(board: np.ndarray, prob: np.ndarray, isBlack: bool) -> Tuple[bool, float]:
     action = array_action_to_move(board, prob, isBlack)
+    if action is None:
+        return True, 0
+    
     return make_move_from_action(board, action, isBlack)
 
 def fen_to_svg(fen: str) -> str:
@@ -492,16 +513,10 @@ def fen_to_svg(fen: str) -> str:
 
 
 if __name__ == '__main__':
+    np.set_printoptions(precision=3, suppress=True)
     board = generate_start_board()
-    print(board_to_observation(board))
-    board = np.zeros((8, 8), dtype=np.int8)
-    
-    # board[5,5] = piece("pawn")
-    board[2,2] = piece("PAWN")
 
-    # moves = pawn_legal_moves(board,5,5)
-    moves = pawn_legal_moves(board,2,2)
+    actions = np.random.rand(8, 8, 2)
 
-    generate_move(board, 2, 2, 2, 3, True)
+    print(array_action_to_move(board, actions, True))
 
-    print(moves)

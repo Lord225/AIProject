@@ -1,7 +1,7 @@
 from typing import Tuple
 import numpy as np
 
-from .diagchess import all_legal_moves, board_to_observation, fen_to_svg, generate_start_board, make_a_move, make_move_from_action, make_move_from_prob, piece_to_fen, to_fen
+from .diagchess import all_legal_moves, array_action_to_move, board_to_observation, fen_to_svg, generate_start_board, legal_moves, make_a_move, make_move_from_action, make_move_from_prob, piece_to_fen, to_fen
 
 def action(move_str: str) -> int:
     x1ord = ord(move_str[0]) - ord("a")
@@ -88,15 +88,16 @@ class DiagonalChess:
     def step_cords(self, from_x: int, from_y: int, to_x: int, to_y: int) -> Tuple[np.ndarray, float, bool]:
         return self.step(from_x + from_y * 8 + to_x * 64 + to_y * 512)
     
-    def step_probs(self, action: np.ndarray):
+    def step_prop(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool]:
         done, reward = make_move_from_prob(self.board, action, self.isBlack)
 
         # switch player
         self.isBlack = not self.isBlack
 
         return board_to_observation(self.board), reward, done
-        
 
+
+    
     def render(self):
         """
         Should render the board using the python-chess library
@@ -116,7 +117,3 @@ class DiagonalChess:
     
     def __repr__(self):
         return to_fen(self.board)
-
-
-
-
