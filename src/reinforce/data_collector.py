@@ -62,6 +62,69 @@ def run_episode(
 
     return states, actions, rewards, next_states, dones
 
+@tf.function
+def run_episode_custom_action(
+        initial_state: tf.Tensor,
+        actor_model: tf.keras.Model, 
+        max_steps: int,
+        tf_env_step: Callable,
+        tf_transform_action: Callable,
+        tf_transform_state: Callable
+        ) -> ReplayHistoryType:
+    """
+    Run a single episode to collect training data
+    collects: 
+    * states - state at each step
+    * actions - action taken at each step
+    * rewards - reward received at each step
+    * next_states - next state at each step
+    * dones - done flag at each step
+    """
+    states = tf.TensorArray(dtype=tf.int8, size=0, dynamic_size=True)
+    actions = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True)
+    rewards = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
+    next_states = tf.TensorArray(dtype=tf.int8, size=0, dynamic_size=True)
+    dones = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
+
+    initial_state_shape = initial_state.shape
+    state = initial_state
+
+    for t in tf.range(max_steps):
+        # Convert state into a batched tensor (batch size = 1)
+        states = states.write(t, state)
+
+        state = tf_transform_state(state)
+        #state = tf.expand_dims(state, 0)
+
+        # Run the model and to get action probabilities and critic value
+        action_logits_t, _ = actor_model(tf.reshape(state, (1, 8, 8, 8))) # type: ignore
+
+        # Sample next action from the action probability distribution
+        #action = tf.random.categorical(action_logits_t, 1, dtype=tf.int32)[0, 0]
+        action = tf_transform_action(action_logits_t)
+        actions = actions.write(t, action)
+
+        # Apply action to the environment to get next state and reward
+        state, reward, done = tf_env_step(action)
+        state.set_shape(initial_state_shape)
+
+        next_states = next_states.write(t, state)
+
+        dones = dones.write(t, tf.cast(done, tf.float32))
+        # Store reward
+        rewards = rewards.write(t, reward)
+
+        if tf.cast(done, tf.bool):
+            break
+
+    states = states.stack()
+    actions = actions.stack()
+    rewards = rewards.stack()
+    next_states = next_states.stack()
+    dones = dones.stack()
+
+    return states, actions, rewards, next_states, dones
+
 def get_expected_return(
     rewards: List, 
     gamma: float):

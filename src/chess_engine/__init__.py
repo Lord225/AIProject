@@ -26,6 +26,8 @@ class DiagonalChess:
         
         self.board = internal.generate_start_board()
         self.isBlack = False
+
+        return self.board
     
 
     def step(self, action: int) -> Tuple[np.ndarray, float, bool]:
@@ -80,7 +82,16 @@ class DiagonalChess:
         # switch player
         self.isBlack = not self.isBlack
         
-        return internal.board_to_observation(self.board, self.isBlack), reward, done
+        return internal.board_to_observation(self.board), reward, done
+    
+    def step_board_obs(self, action: int) -> Tuple[np.ndarray, float, bool]:
+        
+        done, reward = internal.make_move_from_action(self.board, action, self.isBlack)
+
+        # switch player
+        self.isBlack = not self.isBlack
+
+        return self.board, reward, done
 
     def step_human(self, move: str) -> Tuple[np.ndarray, float, bool]:
         return self.step(action(move))
@@ -94,7 +105,7 @@ class DiagonalChess:
         # switch player
         self.isBlack = not self.isBlack
 
-        return internal.board_to_observation(self.board, self.isBlack), reward, done
+        return internal.board_to_observation(self.board), reward, done
 
 
     
