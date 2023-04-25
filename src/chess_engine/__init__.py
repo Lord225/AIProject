@@ -1,7 +1,7 @@
 from typing import Tuple
 import numpy as np
 
-from .diagchess import all_legal_moves, array_action_to_move, board_to_observation, fen_to_svg, generate_start_board, legal_moves, make_a_move, make_move_from_action, make_move_from_prob, piece_to_fen, to_fen
+from . import diagchess as internal
 
 def action(move_str: str) -> int:
     x1ord = ord(move_str[0]) - ord("a")
@@ -24,7 +24,7 @@ class DiagonalChess:
         resets the board to the starting position
         """
         
-        self.board = generate_start_board()
+        self.board = internal.generate_start_board()
         self.isBlack = False
     
 
@@ -75,12 +75,12 @@ class DiagonalChess:
         """
 
         # make move
-        done, reward = make_move_from_action(self.board, action, self.isBlack)
+        done, reward = internal.make_move_from_action(self.board, action, self.isBlack)
 
         # switch player
         self.isBlack = not self.isBlack
         
-        return board_to_observation(self.board), reward, done
+        return internal.board_to_observation(self.board, self.isBlack), reward, done
 
     def step_human(self, move: str) -> Tuple[np.ndarray, float, bool]:
         return self.step(action(move))
@@ -89,12 +89,12 @@ class DiagonalChess:
         return self.step(from_x + from_y * 8 + to_x * 64 + to_y * 512)
     
     def step_prop(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool]:
-        done, reward = make_move_from_prob(self.board, action, self.isBlack)
+        done, reward = internal.make_move_from_prob(self.board, action, self.isBlack)
 
         # switch player
         self.isBlack = not self.isBlack
 
-        return board_to_observation(self.board), reward, done
+        return internal.board_to_observation(self.board, self.isBlack), reward, done
 
 
     
@@ -103,17 +103,17 @@ class DiagonalChess:
         Should render the board using the python-chess library
         """
 
-        return fen_to_svg(to_fen(self.board))
+        return internal.fen_to_svg(internal.to_fen(self.board))
 
     def allowed_moves(self):
-        return all_legal_moves(self.board, self.isBlack)
+        return internal.all_legal_moves(self.board, self.isBlack)
     
     
     def __str__(self):
         output = ''
         for row in self.board:
-            output += f"{' '.join([piece_to_fen(piece) for piece in row])} \n"
+            output += f"{' '.join([internal.piece_to_fen(piece) for piece in row])} \n"
         return output
     
     def __repr__(self):
-        return to_fen(self.board)
+        return internal.to_fen(self.board)

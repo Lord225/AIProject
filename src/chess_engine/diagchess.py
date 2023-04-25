@@ -321,14 +321,14 @@ def legal_moves(board: np.ndarray, x, y):
 @nb.njit('int8[:,:](int8[:,:], boolean)', cache=True)
 def all_legal_moves(board: np.ndarray, isBlack: bool) -> np.ndarray:
     moves = np.zeros((8, 8), dtype=np.int8)
-    piece_positions = np.where(board * isBlack > 0)
-    for x, y in piece_positions:
+    xs, ys = np.where(board * isBlack > 0)
+    for x, y in zip(xs, ys):
         moves += legal_moves(board, y, x)
     return moves
 
-@nb.njit('int8[:,:,:](int8[:,:])', cache=True)
-def board_to_observation(board: np.ndarray) -> np.ndarray:
-    observation = np.zeros((6, 8, 8), dtype=np.int8)
+@nb.njit('int8[:,:,:](int8[:,:], boolean)', cache=True)
+def board_to_observation(board: np.ndarray, isBlack: bool) -> np.ndarray:
+    observation = np.zeros((7, 8, 8), dtype=np.int8)
 
     observation[0, :, :] = (board == piece('pawn')).astype(np.int8) - (board == piece('PAWN')).astype(np.int8)
     observation[1, :, :] = (board == piece('rook')).astype(np.int8) - (board == piece('ROOK')).astype(np.int8)
@@ -336,6 +336,8 @@ def board_to_observation(board: np.ndarray) -> np.ndarray:
     observation[3, :, :] = (board == piece('bishop')).astype(np.int8) - (board == piece('BISHOP')).astype(np.int8)
     observation[4, :, :] = (board == piece('queen')).astype(np.int8) - (board == piece('QUEEN')).astype(np.int8)
     observation[5, :, :] = (board == piece('king')).astype(np.int8) - (board == piece('KING')).astype(np.int8)
+
+    observation[6, :, :] = all_legal_moves(board, isBlack)
 
     return observation
 
@@ -417,7 +419,7 @@ def capture_reward(captured_piece: int):
 
 @nb.njit(cache=True)
 def move_to_int(x1: int, y1: int, x2: int, y2: int) -> int:
-    return (x1%8) * 64*64*64 + (y1%8) * 64*64 + (x2%8) * 64 + (y2%8)
+    return (x1%8) * 8*8*8 + (y1%8) * 8*8 + (x2%8) * 8 + (y2%8)
 
 @nb.njit(cache=True)
 def int_action_to_move(action: int) -> Tuple[int, int, int, int]:
@@ -428,14 +430,14 @@ def int_action_to_move(action: int) -> Tuple[int, int, int, int]:
 
     return x1, y1, x2, y2
 
-@nb.njit(cache=True)
+#@nb.njit(cache=True)
 def array_action_to_move(board: np.ndarray, action: np.ndarray, isBlack: bool) -> Optional[int]:
     # action is array 8x8x2, split into 8x8 and 8x8
     from_move = action[:, :, 0] 
     to_move = action[:, :, 1]
 
     # take all allay positions
-    legal_from = (board <= 0) != isBlack
+    legal_from = (board < 0) != isBlack
     moves_from = from_move * legal_from  
     
     # get max position
@@ -446,7 +448,7 @@ def array_action_to_move(board: np.ndarray, action: np.ndarray, isBlack: bool) -
     y1 = (xf // 8) % 8
 
     # check possible moves
-    legal_to = legal_moves(board, y1, x1)
+    legal_to = np.abs(legal_moves(board, x1, y1))
     moves_to = to_move * legal_to
     
     # if no legal moves, choose random legal move
@@ -456,8 +458,9 @@ def array_action_to_move(board: np.ndarray, action: np.ndarray, isBlack: bool) -
         if move is None:
             return None
         else:
-            return move_to_int(*move)
-
+            x1, y1, x2, y2 = move
+            return move_to_int(x1, y1, x2, y2)
+        
     
     # get max
     xt = np.argmax(moves_to)
@@ -466,18 +469,19 @@ def array_action_to_move(board: np.ndarray, action: np.ndarray, isBlack: bool) -
     x2 = xt % 8
     y2 = (xt // 8) % 8
 
+
     return move_to_int(x1, y1, x2, y2) # type: ignore
 
 
 @nb.njit(cache=True)
 def make_a_move(board: np.ndarray, x1: int, y1: int, x2: int, y2: int, isBlack: bool) -> Tuple[bool, float]:
-    print("chosed move", x1, y1, x2, y2)
+    #print("chosed move", x1, y1, x2, y2)
     move, reward = generate_move(board, x1, y1, x2, y2, isBlack) # type: ignore
     if move is None:
         return True, 0
     else:
         x1, y1, x2, y2 = move
-        print("used move", x1, y1, x2, y2)
+        #print("used move", x1, y1, x2, y2)
         # get piece
         piece = board[y1, x1]
         
@@ -500,7 +504,7 @@ def make_move_from_action(board: np.ndarray, action: int, isBlack: bool) -> Tupl
     x1, y1, x2, y2 = int_action_to_move(action)
     return make_a_move(board, x1, y1, x2, y2, isBlack)
 
-@nb.njit(cache=True)
+#@nb.njit(cache=True)
 def make_move_from_prob(board: np.ndarray, prob: np.ndarray, isBlack: bool) -> Tuple[bool, float]:
     action = array_action_to_move(board, prob, isBlack)
     if action is None:
