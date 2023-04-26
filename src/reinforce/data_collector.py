@@ -159,3 +159,27 @@ def run_episode_and_get_history(
     returns = get_expected_return(rewards, gamma=gamma) #type: ignore
 
     return (states, action_probs, returns, next_states, dones), tf.reduce_sum(rewards)
+
+@tf.function
+def run_episode_and_get_history_2(
+        initial_state: tf.Tensor,
+        actor_model: tf.keras.Model,
+        max_steps: int,
+        gamma: float,
+        tf_env_step: Callable,
+        tf_transform_action: Callable,
+        tf_transform_state: Callable
+) -> Tuple[ReplayHistoryType, tf.Tensor]:
+    # run whole episode
+    states, action_probs, rewards, next_states, dones = run_episode_custom_action(initial_state, 
+                                                                    actor_model, 
+                                                                    max_steps, 
+                                                                    tf_env_step,
+                                                                    tf_transform_action,
+                                                                    tf_transform_state
+                                                                    ) # type: ignore
+
+    # Calculate expected returns
+    returns = get_expected_return(rewards, gamma=gamma) #type: ignore
+
+    return (states, action_probs, returns, next_states, dones), tf.reduce_sum(rewards)

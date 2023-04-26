@@ -342,6 +342,14 @@ def board_to_observation(board: np.ndarray) -> np.ndarray:
 
     return observation
 
+@nb.njit('float32[:,:,:,:](int8[:,:,:])', cache=True)
+def board_to_observation_batch(board: np.ndarray) -> np.ndarray:
+    output = np.zeros((len(board), 8, 8, 8), dtype=np.float32)
+    for i in range(len(board)):
+        output[i] = board_to_observation(board[i])
+    return output
+
+
 @nb.njit(cache=True)
 def random_legal_move(board: np.ndarray, isBlack: bool) -> Optional[Tuple[int, int, int, int]]:
     # choose random piece
@@ -474,12 +482,21 @@ def array_action_to_move(board: np.ndarray, action: np.ndarray, isBlack: bool) -
     return move_to_int(x1, y1, x2, y2) # type: ignore
 
 # vectorized version of array_action_to_move (takes action as array of Nx8x8x2)
-@nb.njit('int32[:](int8[:,:], float32[:,:,:,:], boolean)',cache=True)
+@nb.njit('int32[:](int8[:,:,:], float32[:,:,:,:], boolean)',cache=True)
 def array_action_to_move_vectorized(board: np.ndarray, action: np.ndarray, isBlack: bool) -> np.ndarray:
+    output = np.zeros(action.shape[0], dtype=np.int32)
+    for i in range(action.shape[0]):
+        output[i] = array_action_to_move(board[i], action[i], isBlack)
+    return output
+
+# vectorized version of array_action_to_move (takes action as array of Nx8x8x2)
+@nb.njit('int32[:](int8[:,:], float32[:,:,:,:], boolean)',cache=True)
+def array_action_to_move_vectorized_one_board(board: np.ndarray, action: np.ndarray, isBlack: bool) -> np.ndarray:
     output = np.zeros(action.shape[0], dtype=np.int32)
     for i in range(action.shape[0]):
         output[i] = array_action_to_move(board, action[i], isBlack)
     return output
+        
         
 
 @nb.njit(cache=True)
