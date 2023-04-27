@@ -1,7 +1,7 @@
 from typing import Tuple
 import numpy as np
 
-from .diagchess import all_legal_moves, board_to_observation, fen_to_svg, generate_start_board, make_a_move, make_move_from_action, make_move_from_prob, piece_to_fen, to_fen
+from . import diagchess as internal
 
 def action(move_str: str) -> int:
     x1ord = ord(move_str[0]) - ord("a")
@@ -24,10 +24,20 @@ class DiagonalChess:
         resets the board to the starting position
         """
         
-        self.board = generate_start_board()
+        self.board = internal.generate_start_board()
         self.isBlack = False
 
-        return board_to_observation(self.board, self.isBlack)
+        return internal.board_to_observation(self.board)
+
+    def reset_board(self):
+        """
+        resets the board to the starting position
+        """
+        
+        self.board = internal.generate_start_board()
+        self.isBlack = False
+
+        return internal.board_to_observation(self.board)
     
 
     def step(self, action: int) -> Tuple[np.ndarray, float, bool]:
@@ -77,12 +87,25 @@ class DiagonalChess:
         """
 
         # make move
-        done, reward = make_move_from_action(self.board, action, self.isBlack)
+        done, reward = internal.make_move_from_action(self.board, action, self.isBlack)
 
         # switch player
         self.isBlack = not self.isBlack
         
+<<<<<<< HEAD
         return board_to_observation(self.board, self.isBlack), reward, done
+=======
+        return internal.board_to_observation(self.board), reward, done
+    
+    def step_board_obs(self, action: int) -> Tuple[np.ndarray, float, bool]:
+        
+        done, reward = internal.make_move_from_action(self.board, action, self.isBlack)
+
+        # switch player
+        self.isBlack = not self.isBlack
+
+        return self.board, reward, done
+>>>>>>> 15bd87bd06b74d7c2af0c2adf05ebe140c0b1fa4
 
     def step_human(self, move: str) -> Tuple[np.ndarray, float, bool]:
         return self.step(action(move))
@@ -90,35 +113,37 @@ class DiagonalChess:
     def step_cords(self, from_x: int, from_y: int, to_x: int, to_y: int) -> Tuple[np.ndarray, float, bool]:
         return self.step(from_x + from_y * 8 + to_x * 64 + to_y * 512)
     
-    def step_probs(self, action: np.ndarray):
-        done, reward = make_move_from_prob(self.board, action, self.isBlack)
+    def step_prop(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool]:
+        done, reward = internal.make_move_from_prob(self.board, action, self.isBlack)
 
         # switch player
         self.isBlack = not self.isBlack
 
+<<<<<<< HEAD
         return board_to_observation(self.board, self.isBlack), reward, done
         
+=======
+        return internal.board_to_observation(self.board), reward, done
+>>>>>>> 15bd87bd06b74d7c2af0c2adf05ebe140c0b1fa4
 
+
+    
     def render(self):
         """
         Should render the board using the python-chess library
         """
 
-        return fen_to_svg(to_fen(self.board))
+        return internal.fen_to_svg(internal.to_fen(self.board))
 
     def allowed_moves(self):
-        return all_legal_moves(self.board, self.isBlack)
+        return internal.all_legal_moves(self.board, self.isBlack)
     
     
     def __str__(self):
         output = ''
         for row in self.board:
-            output += f"{' '.join([piece_to_fen(piece) for piece in row])} \n"
+            output += f"{' '.join([internal.piece_to_fen(piece) for piece in row])} \n"
         return output
     
     def __repr__(self):
-        return to_fen(self.board)
-
-
-
-
+        return internal.to_fen(self.board)

@@ -3,3 +3,5 @@ logs/*
 .venv/*
 .conda/*
 __pycache__/
+models/
+!models/readme.md
