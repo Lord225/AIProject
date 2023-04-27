@@ -22,7 +22,7 @@ env = gym.make("CartPole-v1")
 input_shape = [4] # == env.observation_space.shape
 n_outputs = 2 # == env.action_space.n
 def env_step(action):
-    state, reward, done, _, _ = env.step(action)
+    state, reward, done, _, _ = env.step(int(action))
     return (state.astype(np.float32), np.array(reward, np.float32), np.array(done, np.int32))
 
 def tf_env_step(action: tf.Tensor) -> List[tf.Tensor]:
@@ -58,9 +58,9 @@ episodes = 1000
 train_iters_per_episode = 20
 max_steps_per_episode = 200
 target_update_freq = 50
-minibatch_size = 128
-replay_memory_size = 50000
-save_freq = 250
+minibatch_size = 64
+replay_memory_size = 10000
+save_freq = 50
 lr = 1e-3
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
@@ -70,6 +70,7 @@ def run():
 
     t = tqdm.tqdm(range(episodes))
     for episode in t:
+        epsilon = max(1 - episode/50, 0.01)
         # run episode
         state, _ = env.reset()
         state = tf.constant(state, dtype=tf.float32)

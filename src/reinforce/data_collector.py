@@ -3,12 +3,11 @@ import tensorflow as tf
 
 from reinforce.common import ReplayHistoryType
 
-@tf.function
+#@tf.function
 def run_episode(
         initial_state: tf.Tensor,
         actor_model: tf.keras.Model, 
         max_steps: int,
-        epsilon: float,
         tf_env_step: Callable
         ) -> ReplayHistoryType:
     """
@@ -38,12 +37,8 @@ def run_episode(
         # Run the model and to get action probabilities and critic value
         action_logits_t, _ = actor_model(state) # type: ignore
 
-        if tf.random.uniform(()) < epsilon:
-            # take random action
-            action = tf.random.uniform((1,), minval=0, maxval=4096, dtype=tf.int32)[0]
-        else:
-            # Sample next action from the action probability distribution        
-            action = tf.random.categorical(tf.nn.softmax(action_logits_t), 1, dtype=tf.int32)[0, 0]
+     
+        action = tf.random.categorical(tf.nn.softmax(action_logits_t), 1, dtype=tf.int32)[0, 0]
         
         actions = actions.write(t, action)
 
@@ -285,17 +280,16 @@ def get_expected_return(
 
     return returns
 
-@tf.function
+#@tf.function
 def run_episode_and_get_history(
         initial_state: tf.Tensor,
         actor_model: tf.keras.Model,
         max_steps: int,
         gamma: float,
-        epsilon: float,
         tf_env_step: Callable
 ) -> Tuple[ReplayHistoryType, tf.Tensor]:
     # run whole episode
-    states, action_probs, rewards, next_states, dones = run_episode(initial_state, actor_model, max_steps, epsilon, tf_env_step) # type: ignore
+    states, action_probs, rewards, next_states, dones = run_episode(initial_state, actor_model, max_steps, tf_env_step) # type: ignore
 
     # Calculate expected returns
     returns = get_expected_return(rewards, gamma=gamma) #type: ignore
@@ -340,7 +334,7 @@ def run_episode_and_get_history_4(
                                                                     actor_model, 
                                                                     max_steps, 
                                                                     epsilon,
-                                                                    tf_env_step
+                                                                    tf_env_step,
                                                                     ) # type: ignore
 
     # Calculate expected returns
