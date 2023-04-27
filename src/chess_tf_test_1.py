@@ -42,6 +42,7 @@ def tf_transform_action(action, state):
 def env_step(action):
     state1, reward1, done1 = env.step_board_obs(int(action[0]))
 
+
     random_action = np.random.randint(0, 4096)
     state2, reward2, done2 = env.step_board_obs(int(random_action))
 
@@ -100,19 +101,19 @@ train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR+RUN_VER
 
 batch_size = 32
 discount_rate = 0.99
-episodes = 1000
-train_iters_per_episode = 1
+episodes = 5000
+train_iters_per_episode = 6
 max_steps_per_episode = 10
 target_update_freq = 50
 minibatch_size = 32
 replay_memory_size = 1000
 save_freq = 250
-lr = 1e-2
+lr = 7e-2
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 
-buffer = ReplayMemory(10000)
-t = tqdm.tqdm(range(1000))
+buffer = ReplayMemory(replay_memory_size)
+t = tqdm.tqdm(range(episodes))
 for episode in t:
     initial_state = env.reset()
     initial_state = tf.constant(initial_state)
