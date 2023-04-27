@@ -326,9 +326,9 @@ def all_legal_moves(board: np.ndarray, isBlack: bool) -> np.ndarray:
         moves += legal_moves(board, y, x)
     return moves
 
-@nb.njit('float32[:,:,:](int8[:,:])', cache=True)
+@nb.njit('int8[:,:,:](int8[:,:])', cache=True)
 def board_to_observation(board: np.ndarray) -> np.ndarray:
-    observation = np.zeros((8, 8, 8), dtype=np.float32)
+    observation = np.zeros((8, 8, 8), dtype=np.int8)
 
     observation[0, :, :] = (board == piece('pawn')).astype(np.int8) - (board == piece('PAWN')).astype(np.int8)
     observation[1, :, :] = (board == piece('rook')).astype(np.int8) - (board == piece('ROOK')).astype(np.int8)

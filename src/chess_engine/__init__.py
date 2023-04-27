@@ -27,7 +27,17 @@ class DiagonalChess:
         self.board = internal.generate_start_board()
         self.isBlack = False
 
-        return self.board
+        return internal.board_to_observation(self.board)
+
+    def reset_board(self):
+        """
+        resets the board to the starting position
+        """
+        
+        self.board = internal.generate_start_board()
+        self.isBlack = False
+
+        return internal.board_to_observation(self.board)
     
 
     def step(self, action: int) -> Tuple[np.ndarray, float, bool]:

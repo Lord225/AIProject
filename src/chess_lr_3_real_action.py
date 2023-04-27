@@ -7,31 +7,19 @@ import tqdm
 import config_file
 import tensorboard
 
-from reinforce.data_collector import run_episode_and_get_history_3
+from reinforce.data_collector import run_episode_and_get_history_4
 from reinforce.replay_memory import ReplayMemory
-from reinforce.train import training_step_dqnet_target_critic_state_transform
+from reinforce.train import training_step_dqnet_target_critic
 env = chess_engine.DiagonalChess()
 n_outputs = 4096
 
-def transform_state(board_state):
-    return chess_engine.internal.board_to_observation(board_state)
-
-def tf_transform_state(board_state):
-    return tf.numpy_function(transform_state, [board_state], [tf.float32])
-
-def transform_state_batch(board_state):
-    board_state = board_state.astype(np.int8)
-    return chess_engine.internal.board_to_observation_batch(board_state)
-
-def tf_transform_state_batch(board_state):
-    return tf.numpy_function(transform_state_batch, [board_state], [tf.float32])
-
 def env_step(action):
-    state1, reward1, done1 = env.step_board_obs(int(action))
+    state1, reward1, done1 = env.step(int(action))
 
 
     random_action = np.random.randint(0, 4096)
-    state2, reward2, done2 = env.step_board_obs(int(random_action))
+    state2, reward2, done2 = env.step(int(random_action))
+
 
 
     state = state2
@@ -90,15 +78,14 @@ def run():
         epsilon = max(1 - episode / 500, 0.01)
 
         # run episode
-        state = env.reset_board()
+        state = env.reset()
         state = tf.constant(state)
-        (states, action_probs, returns, next_states, dones), total_rewards = run_episode_and_get_history_3(state, 
+        (states, action_probs, returns, next_states, dones), total_rewards = run_episode_and_get_history_4(state, 
                                                                                                            actor_model, 
                                                                                                            max_steps_per_episode, 
                                                                                                            discount_rate,
                                                                                                            epsilon,
-                                                                                                           tf_env_step, 
-                                                                                                           tf_transform_state)  # type: ignore
+                                                                                                           tf_env_step)  # type: ignore
 
         # add to replay memory
         replay_memory.add(states, action_probs, returns, next_states, dones)
@@ -114,7 +101,7 @@ def run():
         if len(replay_memory) > batch_size+1:
             batch = replay_memory.sample(batch_size)
     
-            training_step_dqnet_target_critic_state_transform(batch, 
+            training_step_dqnet_target_critic(batch, 
                                               minibatch_size, 
                                               train_iters_per_episode, 
                                               discount_rate, 
@@ -122,7 +109,6 @@ def run():
                                               actor_model, 
                                               optimizer,
                                               n_outputs,
-                                              tf_transform_state_batch,
                                               )
         # update target network
         if episode % target_update_freq == 0:
