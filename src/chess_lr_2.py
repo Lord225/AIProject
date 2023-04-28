@@ -49,6 +49,9 @@ def tf_env_step(action: tf.Tensor) -> List[tf.Tensor]:
 def get_network():
     inputs = tf.keras.Input(shape=(8, 8, 8))
     x = tf.keras.layers.Conv2D(32, 3, activation="elu", padding='same')(inputs)
+    x = tf.keras.layers.Conv2D(64, 3, activation="elu", padding='same')(x)
+    x = tf.keras.layers.Conv2D(64, 3, activation="elu", padding='same')(x)
+    x = tf.keras.layers.Conv2D(64, 2, activation="elu", padding='same')(x)
     x = tf.keras.layers.Conv2D(64, 2, activation="elu", padding='same')(x)
     actor = tf.keras.layers.Flatten()(x)
     critic = tf.keras.layers.Flatten()(x)
@@ -71,14 +74,14 @@ train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR+RUN_VER
 
 batch_size = 1024
 discount_rate = 0.99
-episodes = 10000
-train_iters_per_episode = 20
-max_steps_per_episode = 20
-target_update_freq = 50
+episodes = 20000
+train_iters_per_episode = 10
+max_steps_per_episode = 10
+target_update_freq = 100
 minibatch_size = 128
-replay_memory_size = 2048
+replay_memory_size = 4000
 save_freq = 250
-lr = 1e-3
+lr = 3e-2
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 
@@ -87,7 +90,7 @@ def run():
 
     t = tqdm.tqdm(range(episodes))
     for episode in t:
-        epsilon = max(1 - episode / 500, 0.01)
+        epsilon = max(1 - episode / 1000, 0.01)
 
         # run episode
         state = env.reset_board()

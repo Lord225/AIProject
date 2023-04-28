@@ -4,9 +4,9 @@ import numba as nb
 import chess
 import chess.svg
 
-WRONG_PIECE_COLOR_PENALTY = -1
-ILLEGAL_MOVE_PENALTY_1 = -1
-ILLEGAL_MOVE_PENALTY_2 = -1
+WRONG_PIECE_COLOR_PENALTY = -0.001
+ILLEGAL_MOVE_PENALTY_1 = -0.001
+ILLEGAL_MOVE_PENALTY_2 = -0.001
 LEGAL_MOVE_REWARD = 1
 
 PAWN_CAPTURE_REWARD = 1
@@ -326,19 +326,19 @@ def all_legal_moves(board: np.ndarray, isBlack: bool) -> np.ndarray:
         moves += legal_moves(board, y, x)
     return moves
 
-@nb.njit('int8[:,:,:](int8[:,:])', cache=True)
+@nb.njit('float32[:,:,:](int8[:,:])', cache=True)
 def board_to_observation(board: np.ndarray) -> np.ndarray:
-    observation = np.zeros((8, 8, 8), dtype=np.int8)
+    observation = np.zeros((8, 8, 8), dtype=np.float32)
 
-    observation[0, :, :] = (board == piece('pawn')).astype(np.int8) - (board == piece('PAWN')).astype(np.int8)
-    observation[1, :, :] = (board == piece('rook')).astype(np.int8) - (board == piece('ROOK')).astype(np.int8)
-    observation[2, :, :] = (board == piece('knight')).astype(np.int8) - (board == piece('KNIGHT')).astype(np.int8)
-    observation[3, :, :] = (board == piece('bishop')).astype(np.int8) - (board == piece('BISHOP')).astype(np.int8)
-    observation[4, :, :] = (board == piece('queen')).astype(np.int8) - (board == piece('QUEEN')).astype(np.int8)
-    observation[5, :, :] = (board == piece('king')).astype(np.int8) - (board == piece('KING')).astype(np.int8)
+    observation[:, :, 0] = (board == piece('pawn')).astype(np.int8) - (board == piece('PAWN')).astype(np.int8)
+    observation[:, :, 1] = (board == piece('rook')).astype(np.int8) - (board == piece('ROOK')).astype(np.int8)
+    observation[:, :, 2] = (board == piece('knight')).astype(np.int8) - (board == piece('KNIGHT')).astype(np.int8)
+    observation[:, :, 3] = (board == piece('bishop')).astype(np.int8) - (board == piece('BISHOP')).astype(np.int8)
+    observation[:, :, 4] = (board == piece('queen')).astype(np.int8) - (board == piece('QUEEN')).astype(np.int8)
+    observation[:, :, 5] = (board == piece('king')).astype(np.int8) - (board == piece('KING')).astype(np.int8)
 
-    observation[6, :, :] = all_legal_moves(board, True)
-    observation[7, :, :] = all_legal_moves(board, False)
+    observation[:, :, 6] = all_legal_moves(board, True)
+    observation[:, :, 7] = all_legal_moves(board, False)
 
     return observation
 

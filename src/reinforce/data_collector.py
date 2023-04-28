@@ -69,13 +69,14 @@ def run_episode(
     return states, actions, rewards, next_states, dones
 
 
-@tf.function
+#@tf.function
 def run_episode_int_obs(
         initial_state: tf.Tensor,
         actor_model: tf.keras.Model, 
         max_steps: int,
         epsilon: float,
-        tf_env_step: Callable
+        tf_env_step: Callable,
+        tf_random_legal_action: Callable,
         ) -> ReplayHistoryType:
     """
     Run a single episode to collect training data
@@ -86,10 +87,10 @@ def run_episode_int_obs(
     * next_states - next state at each step
     * dones - done flag at each step
     """
-    states = tf.TensorArray(dtype=tf.int8, size=0, dynamic_size=True)
+    states = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
     actions = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True)
     rewards = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
-    next_states = tf.TensorArray(dtype=tf.int8, size=0, dynamic_size=True)
+    next_states = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
     dones = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
 
     initial_state_shape = initial_state.shape
@@ -106,7 +107,7 @@ def run_episode_int_obs(
 
         if tf.random.uniform(()) < epsilon:
             # take random action
-            action = tf.random.uniform((1,), minval=0, maxval=4096, dtype=tf.int32)[0]
+            action = tf_random_legal_action()
         else:
             # Sample next action from the action probability distribution        
             action = tf.random.categorical(tf.nn.softmax(action_logits_t), 1, dtype=tf.int32)[0, 0]
@@ -326,7 +327,7 @@ def run_episode_and_get_history_3(
 
     return (states, action_probs, returns, next_states, dones), tf.reduce_sum(rewards)
 
-@tf.function
+#@tf.function
 def run_episode_and_get_history_4(
         initial_state: tf.Tensor,
         actor_model: tf.keras.Model,
@@ -334,13 +335,15 @@ def run_episode_and_get_history_4(
         gamma: float,
         epsilon: float,
         tf_env_step: Callable,
+        tf_random_legal_action: Callable,
 ) -> Tuple[ReplayHistoryType, tf.Tensor]:
     # run whole episode
     states, action_probs, rewards, next_states, dones = run_episode_int_obs(initial_state, 
                                                                     actor_model, 
                                                                     max_steps, 
                                                                     epsilon,
-                                                                    tf_env_step
+                                                                    tf_env_step,
+                                                                    tf_random_legal_action
                                                                     ) # type: ignore
 
     # Calculate expected returns

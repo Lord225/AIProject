@@ -30,5 +30,16 @@ class ReplayMemory:
             tf.gather(self.next_states_buffer, indices),
             tf.gather(self.dones_buffer, indices)
         )
+
+        # # get random slice of (rnd, rnd+batch_size)
+        # rnd = random.randint(0, len(self.returns_buffer) - batch_size)
+
+        # return (
+        #     tf.constant(self.states_buffer[rnd:rnd+batch_size]),
+        #     tf.constant(self.actions_buffer[rnd:rnd+batch_size]),
+        #     tf.constant(self.returns_buffer[rnd:rnd+batch_size]),
+        #     tf.constant(self.next_states_buffer[rnd:rnd+batch_size]),
+        #     tf.constant(self.dones_buffer[rnd:rnd+batch_size])
+        # )
     def __len__(self):
         return len(self.states_buffer)
