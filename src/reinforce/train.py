@@ -248,13 +248,13 @@ def training_step_no_critic_no_target(
 
     # tf function version
     states, actions, rewards, next_states, dones = batch
-    next_Q_values = model(next_states, training=True)
+    next_Q_values, _ = model(next_states, training=True)
     max_next_Q_values = tf.reduce_max(next_Q_values, axis=1)
     target_Q_values = (rewards + (tf.constant(1.0, dtype=tf.float32) - dones) * discount_rate * max_next_Q_values)
     target_Q_values = tf.reshape(target_Q_values, [-1, 1])
     mask = tf.one_hot(actions, n_outputs)
     with tf.GradientTape() as tape:
-        all_Q_values = model(states, training=True)
+        all_Q_values, _ = model(states, training=True)
         Q_values = tf.reduce_sum(all_Q_values * mask, axis=1, keepdims=True)
         loss = tf.reduce_mean(loss_fn(target_Q_values, Q_values))
     grads = tape.gradient(loss, model.trainable_variables)
