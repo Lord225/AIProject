@@ -71,7 +71,6 @@ def run_episode_int_obs(
         max_steps: int,
         epsilon: float,
         tf_env_step: Callable,
-        tf_random_legal_action: Callable,
         ) -> ReplayHistoryType:
     """
     Run a single episode to collect training data
@@ -100,12 +99,16 @@ def run_episode_int_obs(
         # Run the model and to get action probabilities and critic value
         action_logits_t, _ = actor_model(state) # type: ignore
 
-        if tf.random.uniform(()) < epsilon:
-            # take random action
-            action = tf_random_legal_action()
-        else:
-            # Sample next action from the action probability distribution        
-            action = tf.random.categorical(tf.nn.softmax(action_logits_t), 1, dtype=tf.int32)[0, 0]
+        action_probs_t = tf.nn.softmax(action_logits_t)
+
+        action = tf.cast( 
+        tf.squeeze(tf.where(
+            tf.random.uniform([1]) < epsilon,
+            # Random int, 0-4096
+            tf.random.uniform([1], minval=0, maxval=4096, dtype=tf.int64),
+            # argmax action
+            tf.argmax(action_probs_t, axis=1)[0],
+        )), dtype=tf.int32)
         
         actions = actions.write(t, action)
 
@@ -116,6 +119,7 @@ def run_episode_int_obs(
         next_states = next_states.write(t, state)
 
         dones = dones.write(t, tf.cast(done, tf.float32))
+        
         # Store reward
         rewards = rewards.write(t, reward)
 
@@ -329,15 +333,13 @@ def run_episode_and_get_history_4(
         gamma: float,
         epsilon: float,
         tf_env_step: Callable,
-        tf_random_legal_action: Callable,
 ) -> Tuple[ReplayHistoryType, tf.Tensor]:
     # run whole episode
     states, action_probs, rewards, next_states, dones = run_episode_int_obs(initial_state, 
                                                                     actor_model, 
                                                                     max_steps, 
                                                                     epsilon,
-                                                                    tf_env_step,
-                                                                    tf_random_legal_action
+                                                                    tf_env_step
                                                                     ) # type: ignore
 
     # Calculate expected returns

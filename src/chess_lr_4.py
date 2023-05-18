@@ -1,10 +1,11 @@
 import chess_engine
 import collections
 import gym
+import tensorboard
 import numpy as np
 import tensorflow as tf
 import tqdm
-from typing import Any, List, Sequence, Tuple
+from typing import Any, Callable, List, Sequence, Tuple
 import config_file
 
 # Create the environment
@@ -13,17 +14,23 @@ env = chess_engine.DiagonalChess()
 
 def get_network():
     inputs = tf.keras.Input(shape=(8, 8, 8))
-    x = tf.keras.layers.Conv2D(32,  3, activation="relu", padding='same')(inputs)
-    x = tf.keras.layers.Conv2D(64,  3, padding='same')(x)
-    x = tf.keras.layers.Conv2D(128,  2, padding='same')(x)
-    x = tf.keras.layers.Conv2D(128,  2, padding='same')(x)
-    x = tf.keras.layers.Conv2D(64,  2, padding='same')(x)
-    actor = tf.keras.layers.Flatten()(x)
+    x = tf.keras.layers.Conv2D(32,  3, activation="elu", padding='same')(inputs)
+    x = tf.keras.layers.Conv2D(64,  3, padding='same', activation="elu")(x)
+    x = tf.keras.layers.Conv2D(128,  2, padding='same', activation="elu")(x)
+    x = tf.keras.layers.Conv2D(256,  2, padding='same', activation="elu")(x)
+    x = tf.keras.layers.Conv2D(256,  2, padding='same', activation="elu")(x)
+    x = tf.keras.layers.Conv2D(256,  2, padding='same', activation="elu")(x)
+    x = tf.keras.layers.Conv2D(64,  2, padding='same', activation="elu")(x)
+    x = tf.keras.layers.Flatten()(x) # 4096
+    # dot layer
+    actor = tf.keras.layers.Dot(axes=1)([x, x])
     critic = tf.keras.layers.Flatten()(x)
     critic = tf.keras.layers.Dense(2)(critic)
     critic = tf.keras.layers.Dense(1)(critic)
 
     model = tf.keras.Model(inputs=inputs, outputs=[actor, critic])
+
+    model.compile()
 
     print(model.summary())
 
@@ -37,20 +44,31 @@ def env_step(action):
     random_action = np.random.randint(0, 4096)
     state2, reward2, done2 = env.step(int(random_action))
 
+    # if reward1 < 0:
+    #     reward1 = -1
+    #     done1 = True
+    
+
     state = state2
     reward = reward1 #- max(reward2, 0)
     done = done1 or done2
 
-    return (state1.astype(np.float32), np.array(reward, np.float32), np.array(done, np.int32))
+    return (state.astype(np.float32), np.array(reward, np.float32), np.array(done, np.int32))
 
 def tf_env_step(action: tf.Tensor) -> List[tf.Tensor]:
   return tf.numpy_function(env_step, [action], [tf.float32, tf.float32, tf.int32]) # type: ignore
 
+def reset_env():
+    return env.reset().astype(np.float32)
+
+def tf_reset_env() -> tf.Tensor:
+    return tf.numpy_function(reset_env, [], tf.float32) # type: ignore
+ 
 
 def run_episode(
-    initial_state: tf.Tensor,  
     model: tf.keras.Model, 
-    max_steps: int
+    max_steps: int,
+    tf_reset_env: Callable,
     ) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
   """Runs a single episode to collect training data."""
 
@@ -58,6 +76,7 @@ def run_episode(
   values = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
   rewards = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
 
+  initial_state = tf_reset_env()
   initial_state_shape = initial_state.shape
   state = initial_state
 
@@ -70,7 +89,18 @@ def run_episode(
     action_probs_t = tf.nn.softmax(action_logits_t)
 
     # Sample next action from the action probability distribution
-    action = tf.random.categorical(action_probs_t, 1)[0, 0]
+    #action = tf.random.categorical(action_probs_t, 1)[0, 0]
+
+    # Sample next action from epsilon-greedy distribution
+    action = tf.squeeze(tf.where(
+        tf.random.uniform([1]) < 0.1,
+        tf.random.categorical(action_probs_t, 1)[0, 0],
+        tf.argmax(action_probs_t, axis=1)[0],
+    ))
+
+    #numpy_action = action_logits_t.numpy()
+
+    #tf.print(numpy_action.max(), numpy_action.min(), numpy_action.mean(), numpy_action.std())
 
     # Store critic values
     values = values.write(t, tf.squeeze(value))
@@ -119,7 +149,7 @@ def get_expected_return(
   return returns
 
 
-huber_loss = tf.keras.losses.Huber(reduction=tf.keras.losses.Reduction.SUM)
+#huber_loss = tf.keras.losses.Huber(reduction=tf.keras.losses.Reduction.SUM)
 loss_metric = tf.keras.metrics.Mean(name='loss')
 
 def compute_loss(
@@ -133,24 +163,24 @@ def compute_loss(
   action_log_probs = tf.math.log(action_probs)
   actor_loss = -tf.math.reduce_sum(action_log_probs * advantage)
 
-  critic_loss = huber_loss(values, returns)
+  critic_loss = tf.keras.losses.mean_squared_error(values, returns)
 
   return actor_loss + critic_loss
 
 
-#@tf.function
+@tf.function
 def train_step(
-    initial_state: tf.Tensor, 
     model: tf.keras.Model, 
     optimizer: tf.keras.optimizers.Optimizer, 
     gamma: float,
-    max_steps_per_episode: int) -> tf.Tensor:
+    max_steps_per_episode: int,
+    tf_reset_env: Callable) -> tf.Tensor:
   """Runs a model training step."""
 
   with tf.GradientTape() as tape:
 
     # Run the model for one episode to collect training data
-    action_probs, values, rewards = run_episode(initial_state, model, max_steps_per_episode) 
+    action_probs, values, rewards = run_episode(model, max_steps_per_episode, tf_reset_env) 
 
     # Calculate the expected returns
     returns = get_expected_return(rewards, gamma)
@@ -174,10 +204,10 @@ def train_step(
   return episode_reward
 
 discount_rate = 0.95
-episodes = 200000
+episodes = 2_000_000
 save_freq = 250
-lr = 1e-3
-max_steps_per_episode = 20
+lr = 1e-5
+max_steps_per_episode = 10
 
 RUN_VERSION = "v5.0"
 
@@ -190,9 +220,7 @@ running_avg = collections.deque(maxlen=1000)
 t = tqdm.trange(episodes)
 for i in t:
     epsilon = max(0.01, 1 - i/1000)
-    initial_state = env.reset()
-    initial_state = tf.constant(initial_state, dtype=tf.float32)
-    episode_reward = float(train_step(initial_state, model, optimizer, discount_rate, max_steps_per_episode))
+    episode_reward = float(train_step(model, optimizer, discount_rate, max_steps_per_episode, tf_reset_env))
 
 
     running_avg.append(episode_reward)
@@ -203,8 +231,6 @@ for i in t:
         tf.summary.scalar('loss', loss_metric.result(), step=i)
         loss_metric.reset_states()
     t.set_postfix(episode_reward=episode_reward, avg=avg)
-  
-
 
     if i % save_freq == 0:
         model.save(f"{config_file.MODELS_DIR}chess_{RUN_VERSION}_{config_file.RUN_NAME}_{i}.h5")
