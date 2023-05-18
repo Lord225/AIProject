@@ -92,10 +92,6 @@ def run_episode(
   values = values.stack()
   rewards = rewards.stack()
 
-  print('a', action_probs.numpy())
-  print('b', values.numpy())
-  print('c', rewards.numpy())
-
   return action_probs, values, rewards
 
 
