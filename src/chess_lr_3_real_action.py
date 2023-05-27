@@ -8,7 +8,7 @@ import config_file
 import tensorboard
 from collections import deque
 from reinforce.data_collector import run_episode_and_get_history_4
-from reinforce.replay_memory import ReplayMemory
+from reinforce.replay_memory import ReplayMemory, ReplayMemory2
 from reinforce.train import training_step_dqnet_target_critic, training_step_no_critic_no_target
 import argparse
 
@@ -24,12 +24,11 @@ n_outputs = 4096
 def env_step(action):
     state1, reward1, done1 = env.step(int(action))
 
-
     random_action = np.random.randint(0, 4096)
     state2, reward2, done2 = env.step(int(random_action))
 
     state = state2
-    reward = reward1 - max(reward2, 0)
+    reward = reward1 - (1 if reward2 > 2 else 0)
     done = done1 or done2
 
     return (state.astype(np.float32), np.array(reward, np.float32), np.array(done, np.int32))
@@ -51,8 +50,8 @@ def tf_random_legal_action():
 
 def get_network() -> tf.keras.Model:
     if args.resume is not None:
-        model = tf.keras.models.load_model(config_file.MODELS_DIR + args.resume)
-        print("loaded model from", config_file.MODELS_DIR + args.resume)
+        model = tf.keras.models.load_model(args.resume)
+        print("loaded model from", args.resume)
         return model # type: ignore
     
     inputs = tf.keras.Input(shape=(8, 8, 8))
@@ -87,35 +86,40 @@ RUN_VERSION = "v4.0"
 print("run:", config_file.LOG_DIR+RUN_VERSION)
 train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR+RUN_VERSION) #type: ignore
 
-batch_size = 1000
-discount_rate = 0.5
+batch_size = 1024
+discount_rate = 0.1
 episodes = 200000
-train_iters_per_episode = 50
+minibatch_size = 128
+train_iters_per_episode = 10
 max_steps_per_episode = 15
-target_update_freq = 100
-minibatch_size = 64
-replay_memory_size = 3000
+target_update_freq = 500
+replay_memory_size = 50000
 save_freq = 250
 
-eps_decay_len = 1000
+eps_decay_len = 100
 eps_min = 0.1
+
 
 lr = 2.5e-4
 
 optimizer = tf.keras.optimizers.RMSprop(
-    learning_rate=lr,
-    rho=0.95,
-    momentum=0.0,
-    epsilon=1e-07,
-    centered=True,
-)
+                learning_rate=lr,
+                rho=0.95,
+                momentum=0.0,
+                epsilon=1e-07,
+                centered=True,
+            )
 
-# optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+# optimizer = tf.keras.optimizers.Adam(
+#     learning_rate=lr,
+#     beta_1=0.85,
+#     beta_2=0.95,    
+# )
 
 running_avg = deque(maxlen=500)
 
 def run():
-    replay_memory = ReplayMemory(replay_memory_size)
+    replay_memory = ReplayMemory2(replay_memory_size, (replay_memory_size, 8, 8, 8))
 
     t = tqdm.tqdm(range(episodes))
     for episode in t:

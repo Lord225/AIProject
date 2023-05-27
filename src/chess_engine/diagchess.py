@@ -4,9 +4,9 @@ import numba as nb
 import chess
 import chess.svg
 
-WRONG_PIECE_COLOR_PENALTY = -0.1
-ILLEGAL_MOVE_PENALTY_1 = -0.1
-ILLEGAL_MOVE_PENALTY_2 = -0.1
+WRONG_PIECE_COLOR_PENALTY = -1
+ILLEGAL_MOVE_PENALTY_1 = -1
+ILLEGAL_MOVE_PENALTY_2 = -1
 LEGAL_MOVE_REWARD = 1
 
 PAWN_CAPTURE_REWARD = 5
@@ -408,6 +408,24 @@ def generate_move(board: np.ndarray, x1: int, y1: int, x2: int, y2: int, isBlack
         else: 
             # no legal moves, try any move
             return random_legal_move(board, isBlack), ILLEGAL_MOVE_PENALTY_2 # no legal moves
+
+@nb.njit(cache=True)
+def get_legal_moves_mask(board: np.ndarray, isBlack: bool) -> np.ndarray:
+    """
+    Returns a mask (4096 x 1) of legal moves for given board and color
+    """
+
+    mask = np.zeros((4096), dtype=np.int8)
+
+    for x in range(8):
+        for y in range(8):
+            if (board[x, y] < 0) == isBlack:
+                legal = legal_moves(board, x, y)
+                legal = np.argwhere(legal != 0)
+                for x2, y2 in legal:
+                    mask[move_to_int(x, y, y2, x2)] = 1
+
+    return mask
 
 @nb.njit(cache=True)
 def capture_reward(captured_piece: int):

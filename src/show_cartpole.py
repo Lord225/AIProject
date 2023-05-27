@@ -1,11 +1,7 @@
-from typing import List
 import gym
 import numpy as np
 import tensorflow as tf
-import tqdm
 import config_file
-import tensorboard
-# argpars
 import argparse
 
 # get model name from command line
@@ -43,8 +39,3 @@ while True:
             break
     # close environment
     env.close()
-
-
-
-
-

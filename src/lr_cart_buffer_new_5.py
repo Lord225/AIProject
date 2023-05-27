@@ -6,7 +6,7 @@ import tqdm
 import config_file
 import tensorboard
 from reinforce.data_collector import run_episode_and_get_history
-from reinforce.replay_memory import ReplayMemory
+from reinforce.replay_memory import ReplayMemory, ReplayMemory2
 from reinforce.train import training_step_dqnet_target_critic
 
 # RL implementation 5
@@ -61,12 +61,12 @@ target_update_freq = 50
 minibatch_size = 64
 replay_memory_size = 10000
 save_freq = 50
-lr = 1e-3
+lr = 1e-2
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 
 def run():
-    replay_memory = ReplayMemory(replay_memory_size)
+    replay_memory = ReplayMemory2(replay_memory_size, (replay_memory_size, 4))
 
     t = tqdm.tqdm(range(episodes))
     for episode in t:
@@ -74,7 +74,7 @@ def run():
         # run episode
         state, _ = env.reset()
         state = tf.constant(state, dtype=tf.float32)
-        (states, action_probs, returns, next_states, dones), total_rewards = run_episode_and_get_history(state, actor_model, max_steps_per_episode, discount_rate, tf_env_step)  # type: ignore
+        (states, action_probs, returns, next_states, dones), total_rewards = run_episode_and_get_history(state, actor_model, max_steps_per_episode, discount_rate, epsilon, tf_env_step)  # type: ignore
 
         # add to replay memory
         replay_memory.add(states, action_probs, returns, next_states, dones)
