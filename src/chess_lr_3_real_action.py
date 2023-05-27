@@ -9,7 +9,7 @@ import tensorboard
 from collections import deque
 from reinforce.data_collector import run_episode_and_get_history_4
 from reinforce.replay_memory import ReplayMemory
-from reinforce.train import training_step_dqnet_target_critic, training_step_no_critic_no_target
+from reinforce.train import training_step_dqnet_target_critic
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -29,7 +29,7 @@ def env_step(action):
     state2, reward2, done2 = env.step(int(random_action))
 
     state = state2
-    reward = reward1 - max(reward2, 0)
+    reward = reward1 #- max(reward2, 0)
     done = done1 or done2
 
     return (state.astype(np.float32), np.array(reward, np.float32), np.array(done, np.int32))
@@ -88,7 +88,7 @@ print("run:", config_file.LOG_DIR+RUN_VERSION)
 train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR+RUN_VERSION) #type: ignore
 
 batch_size = 1000
-discount_rate = 0.5
+discount_rate = 0.1
 episodes = 200000
 train_iters_per_episode = 50
 max_steps_per_episode = 15
@@ -102,15 +102,15 @@ eps_min = 0.1
 
 lr = 2.5e-4
 
-optimizer = tf.keras.optimizers.RMSprop(
-    learning_rate=lr,
-    rho=0.95,
-    momentum=0.0,
-    epsilon=1e-07,
-    centered=True,
-)
+# optimizer = tf.keras.optimizers.RMSprop(
+#     learning_rate=lr,
+#     rho=0.95,
+#     momentum=0.0,
+#     epsilon=1e-07,
+#     centered=True,
+# )
 
-# optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
+optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 
 running_avg = deque(maxlen=500)
 
@@ -136,8 +136,6 @@ def run():
         replay_memory.add(states, action_probs, returns, next_states, dones)
         running_avg.append(total_rewards)
         avg = sum(running_avg)/len(running_avg)
-
-
 
         # log
         with train_summary_writer.as_default():
