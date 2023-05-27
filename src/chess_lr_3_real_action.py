@@ -141,8 +141,6 @@ def run():
         running_avg.append(total_rewards)
         avg = sum(running_avg)/len(running_avg)
 
-
-
         # log
         with train_summary_writer.as_default():
             tf.summary.scalar('reward', total_rewards, step=episode)

@@ -29,7 +29,7 @@ while True:
         env.render()
         # predict action
         Q_values = model.predict(state[np.newaxis], verbose=0) #type: ignore
-        action = np.argmax(Q_values[0])
+        action = 0
         # step environment
         next_state, reward, done, *info = env.step(action)
         # update state
