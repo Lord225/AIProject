@@ -80,21 +80,21 @@ RUN_VERSION = "v4.0"
 print("run:", config_file.LOG_DIR+RUN_VERSION)
 train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR+RUN_VERSION) #type: ignore
 
-batch_size = 1024
+batch_size = 2048
 discount_rate = 0.1
 episodes = 1000000
-minibatch_size = 64
+minibatch_size = 128
 train_iters_per_episode = 16
-train_interval = 10
+train_interval = 3
 max_steps_per_episode = 15
 target_update_freq = 500
-replay_memory_size = 10_000
+replay_memory_size = 30_000
 save_freq = 250
 
 eps_decay_len = 100
 eps_min = 0.1
 
-lr = 2.5e-4
+lr = 2.5e-5
 
 # optimizer = tf.keras.optimizers.RMSprop(
 #                 learning_rate=lr,
