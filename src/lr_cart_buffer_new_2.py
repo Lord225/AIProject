@@ -127,6 +127,7 @@ batch_size = 128
 discount_rate = 0.99
 optimizer = tf.keras.optimizers.Adam(learning_rate=1e-2)
 loss_fn = tf.keras.losses.mean_squared_error
+save_freq = 25
 
 @tf.function
 def training_step(
@@ -185,5 +186,9 @@ def run():
                 batch = sample_experiences(32, buffer)
         
                 training_step(batch, model, optimizer)
+        
+        # save model
+        if episode % save_freq == 0:
+            model.save(f"{config_file.MODELS_DIR}actor_model_v2_{config_file.RUN_NAME}_{episode}.h5")
 
 run()

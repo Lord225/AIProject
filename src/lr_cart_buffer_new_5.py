@@ -52,16 +52,16 @@ RUN_VERSION = "v5.2"
 
 train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR+RUN_VERSION) #type: ignore
 
-batch_size = 1024
+batch_size = 256
 discount_rate = 0.99
-episodes = 1000
-train_iters_per_episode = 20
+episodes = 200
+train_iters_per_episode = 256//32
 max_steps_per_episode = 200
-target_update_freq = 50
-minibatch_size = 64
-replay_memory_size = 10000
+target_update_freq = 5
+minibatch_size = 32
+replay_memory_size = 2000
 save_freq = 50
-lr = 1e-2
+lr = 1e-3
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=lr)
 
