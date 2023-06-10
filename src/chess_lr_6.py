@@ -52,15 +52,13 @@ def get_network() -> tf.keras.Model:
     
     inputs = tf.keras.Input(shape=(8, 8, 8))
     x = tf.keras.layers.Conv2D(32,  3, activation="elu", padding='same')(inputs)
-    x = tf.keras.layers.Conv2D(64,  3, padding='same', activation="elu")(x)
+    x = tf.keras.layers.Conv2D(128,  3, padding='same', activation="elu")(x)
     x = tf.keras.layers.Conv2D(128,  2, padding='same', activation="elu")(x)
-    x = tf.keras.layers.Conv2D(256,  2, padding='same', activation="elu")(x)
-    x = tf.keras.layers.Conv2D(256,  2, padding='same', activation="elu")(x)
-    x = tf.keras.layers.Conv2D(256,  2, padding='same', activation="elu")(x)
-    x = tf.keras.layers.Conv2D(64,  2, padding='same', activation="elu")(x)
-    actor = tf.keras.layers.Flatten()(x)
-    critic = tf.keras.layers.Flatten()(x)
-    critic = tf.keras.layers.Dense(2, activation="relu")(critic)
+    x = tf.keras.layers.Conv2D(128,  2, padding='same', activation="elu")(x)
+    x = tf.keras.layers.Flatten()(x)
+    x = tf.keras.layers.Dense(4096, activation="elu", kernel_regularizer=tf.keras.regularizers.l2(0.01))(x)
+    actor =  tf.keras.layers.Dense(4096)(x)
+    critic = tf.keras.layers.Dense(2, activation="relu")(x)
     critic = tf.keras.layers.Dense(1)(critic)
 
     model = tf.keras.Model(inputs=inputs, outputs=[actor, critic])
@@ -81,15 +79,15 @@ print("run:", config_file.LOG_DIR+RUN_VERSION)
 train_summary_writer = tf.summary.create_file_writer(config_file.LOG_DIR+RUN_VERSION) #type: ignore
 
 batch_size = 2048
-discount_rate = 0.85
+discount_rate = 0.5
 episodes = 1000000
-minibatch_size = 128
-train_iters_per_episode = 16
-train_interval = 3
+minibatch_size = 256
+train_iters_per_episode = 8
+train_interval = 1
 max_steps_per_episode = 15
-target_update_freq = 500
-replay_memory_size = 10_000
-save_freq = 250
+target_update_freq = 300
+replay_memory_size = 15_000
+save_freq = 500
 
 eps_decay_len = 100
 eps_min = 0.05

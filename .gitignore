@@ -4,4 +4,5 @@ logs/*
 .conda/*
 __pycache__/
 models/
+retain/
 !models/readme.md
