@@ -366,6 +366,8 @@ def run_episode_and_get_history_4(
     return (states, action_probs, rewards, next_states, dones), tf.reduce_sum(rewards)
 
 
+
+
 @tf.function
 def run_episode_and_get_history_2(
         initial_state: tf.Tensor,
@@ -389,3 +391,155 @@ def run_episode_and_get_history_2(
     returns = get_expected_return(rewards, gamma=gamma) #type: ignore
 
     return (states, action_probs, returns, next_states, dones), tf.reduce_sum(rewards)
+
+
+def run_episode_int_obs_selfplay(
+        initial_state: tf.Tensor,
+        actor_model_white: tf.keras.Model,
+        actor_model_black: tf.keras.Model, 
+        max_steps: int,
+        epsilon_w: float,
+        epsilon_b: float,
+        tf_env_step: Callable,
+        tf_moves_mask: Callable
+        ) -> Tuple[ReplayHistoryType, ReplayHistoryType]:
+    """
+    Run a single episode to collect training data
+    collects: 
+    * states - state at each step
+    * actions - action taken at each step
+    * rewards - reward received at each step
+    * next_states - next state at each step
+    * dones - done flag at each step
+    """
+    states_white = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
+    actions_white = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True)
+    rewards_white = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
+    next_states_white = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
+    dones_white = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
+
+    states_black = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
+    actions_black = tf.TensorArray(dtype=tf.int32, size=0, dynamic_size=True)
+    rewards_black = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
+    next_states_black = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
+    dones_black = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
+
+    initial_state_shape = initial_state.shape
+    state = initial_state
+
+    for t in tf.range(max_steps):
+        # white player
+
+        states_white = states_white.write(t, state)
+        state = tf.expand_dims(state, 0)
+
+        # Run the model and to get action probabilities and critic value
+        action_logits_t, _ = actor_model_white(state) # type: ignore
+
+        mask = tf_moves_mask()
+
+        action_probs_t = tf.nn.softmax(action_logits_t*mask)
+
+        action = tf.cast( 
+        tf.squeeze(tf.where(
+            tf.random.uniform([1]) < epsilon_w,
+            # Random int, 0-4096
+            tf.random.uniform([1], minval=0, maxval=4096, dtype=tf.int64),
+            # argmax action
+            tf.argmax(action_probs_t, axis=1)[0],
+        )), dtype=tf.int32)
+        
+        actions_white = actions_white.write(t, action)
+
+        # Apply action to the environment to get next state and reward
+        state, reward_white, done_white = tf_env_step(action)
+        state.set_shape(initial_state_shape)
+
+        next_states_white = next_states_white.write(t, state)
+
+        dones_white = dones_white.write(t, tf.cast(done_white, tf.float32))
+
+        if tf.cast(done_white, tf.bool): # type: ignore
+            rewards_white = rewards_white.write(t, reward_white)
+            break
+
+        # black player
+        states_black = states_black.write(t, state)
+        state = tf.expand_dims(state, 0)
+
+        # Run the model and to get action probabilities and critic value
+        action_logits_t, _ = actor_model_black(state) # type: ignore
+
+        mask = tf_moves_mask()
+
+        action_probs_t = tf.nn.softmax(action_logits_t*mask)
+
+        action = tf.cast(
+            tf.squeeze(tf.where(
+                tf.random.uniform([1]) < epsilon_b,
+                # Random int, 0-4096
+                tf.random.uniform([1], minval=0, maxval=4096, dtype=tf.int64),
+                # argmax action
+                tf.argmax(action_probs_t, axis=1)[0],
+            )), dtype=tf.int32)
+        
+        actions_black = actions_black.write(t, action)
+
+        # Apply action to the environment to get next state and reward
+        state, reward_black, done_black = tf_env_step(action)
+        state.set_shape(initial_state_shape)
+
+        next_states_black = next_states_black.write(t, state)
+
+        dones_black = dones_black.write(t, tf.cast(done_black, tf.float32))
+
+        rewards_white = rewards_white.write(t, reward_white - 0.9*reward_black)
+        rewards_black = rewards_black.write(t, reward_black - 0.9*reward_white)
+
+        if tf.cast(done_black, tf.bool): # type: ignore
+            break
+
+
+    states_white = states_white.stack()
+    actions_white = actions_white.stack()
+    rewards_white = rewards_white.stack()
+    next_states_white = next_states_white.stack()
+    dones_white = dones_white.stack()
+
+    states_black = states_black.stack()
+    actions_black = actions_black.stack()
+    rewards_black = rewards_black.stack()
+    next_states_black = next_states_black.stack()
+    dones_black = dones_black.stack()
+
+    return (states_white, actions_white, rewards_white, next_states_white, dones_white), (states_black, actions_black, rewards_black, next_states_black, dones_black)
+
+
+
+    
+def run_episode_and_get_history_selfplay(
+        initial_state: tf.Tensor,
+        actor_model_white: tf.keras.Model,
+        actor_model_black: tf.keras.Model,
+        max_steps: int,
+        epsilon_w: float,
+        epsilon_b: float,
+        tf_env_step: Callable,
+        tf_moves_mask: Callable,
+) -> Tuple[ReplayHistoryType, ReplayHistoryType, tf.Tensor, tf.Tensor]:
+    # run whole episode
+    white, black = run_episode_int_obs_selfplay(initial_state, 
+                                                actor_model_white, 
+                                                actor_model_black, 
+                                                max_steps, 
+                                                epsilon_w,
+                                                epsilon_b, 
+                                                tf_env_step, 
+                                                tf_moves_mask)
+
+    # Calculate expected returns
+    # returns = get_expected_return(rewards, gamma=gamma) #type: ignore
+    rewards_white = white[2]
+    rewards_black = black[2]
+
+    return white, black, tf.reduce_sum(rewards_white), tf.reduce_sum(rewards_black)
